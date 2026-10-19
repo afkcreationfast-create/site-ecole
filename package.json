@@ -1,0 +1,15 @@
+{
+  "name": "site-ecole",
+  "version": "1.0.0",
+  "description": "Site web scolaire - Projet Primaire",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.9",
+    "express": "^4.19.2",
+    "pg": "^8.11.3"
+  }
+}
