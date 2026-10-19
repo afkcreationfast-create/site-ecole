@@ -20,7 +20,7 @@ pool.connect()
     .then(() => console.log('✅ Connexion à Supabase réussie !'))
     .catch(err => console.error('❌ Erreur de connexion à Supabase :', err));
 
-// 1. ROUTE ACCUEIL : Page d'accueil aux couleurs de LEKOL S&H
+// 1. ROUTE ACCUEIL : Page d'accueil LEKOL S&H
 app.get('/', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM annonces ORDER BY date_publication DESC');
@@ -60,7 +60,7 @@ app.get('/', async (req, res) => {
                 </header>
                 <nav>
                     <a href="/">Accueil</a>
-                    <a href="/connexion">Connexion / Administration</a>
+                    <a href="/connexion">Connexion / Espace Membre</a>
                 </nav>
                 <div class="container">
                     <div class="card">
@@ -85,7 +85,7 @@ app.get('/', async (req, res) => {
                     </div>
                     <div class="card">
                         <h2>🔐 Espace Membres & Direction</h2>
-                        <p style="font-size: 1rem; color: #4b5563; margin-bottom: 20px;">Accédez à votre espace ou connectez-vous au panneau de contrôle de l'établissement.</p>
+                        <p style="font-size: 1rem; color: #4b5563; margin-bottom: 20px;">Accédez à votre espace élève/parent ou connectez-vous au panneau de contrôle.</p>
                         <a href="/connexion" class="btn">Se Connecter</a>
                     </div>
                 </div>
@@ -107,6 +107,7 @@ app.get('/connexion', (req, res) => {
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Connexion - LEKOL S&H</title>
             <style>
                 body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
@@ -124,7 +125,7 @@ app.get('/connexion', (req, res) => {
                 <h2>Connexion LEKOL S&H</h2>
                 <form action="/connexion" method="POST">
                     <label>Identifiant (Email ou Code Élève)</label>
-                    <input type="text" name="identifiant" required placeholder="Ex: fransenaugustin0@gmail.com">
+                    <input type="text" name="identifiant" required placeholder="Ex: S&H-1234 ou fransenaugustin0@gmail.com">
                     
                     <label>Mot de passe</label>
                     <input type="password" name="password" required placeholder="Votre mot de passe">
@@ -138,7 +139,7 @@ app.get('/connexion', (req, res) => {
     `);
 });
 
-// Traitement de la connexion
+// Traitement de la connexion (Direction vs Élève/Parent)
 app.post('/connexion', async (req, res) => {
     const { identifiant, password } = req.body;
     try {
@@ -150,9 +151,11 @@ app.post('/connexion', async (req, res) => {
         if (result.rows.length > 0) {
             const user = result.rows[0];
             if (user.role === 'ADMIN') {
-                res.redirect(`/admin?nom=${user.nom}`);
+                res.redirect(`/admin`);
+            } else if (user.role === 'ELEVE' || user.role === 'PARENT') {
+                res.redirect(`/espace-eleve?id=${user.id}`);
             } else {
-                res.send(`<h1>Bienvenue ${user.prenom} !</h1><p>Espace membre en cours de finalisation.</p><a href="/">Accueil</a>`);
+                res.send(`<h1>Espace Professeur en cours de finalisation</h1><a href="/">Retour</a>`);
             }
         } else {
             res.send(`<script>alert('Identifiant ou mot de passe incorrect'); window.location.href='/connexion';</script>`);
@@ -163,7 +166,203 @@ app.post('/connexion', async (req, res) => {
     }
 });
 
-// 3. PANNEAU D'ADMINISTRATION COMPLET (Contrôle total de la direction)
+// 3. ESPACE ÉLÈVE & PARENT (Suivi des Présences/Absences/Retards + Devoirs)
+app.get('/espace-eleve', async (req, res) => {
+    const eleveId = req.query.id;
+    if (!eleveId) return res.redirect('/connexion');
+
+    try {
+        // Infos de l'élève
+        const eleveResult = await pool.query(`
+            SELECT u.*, c.nom as nom_classe 
+            FROM utilisateurs u 
+            LEFT JOIN classes c ON u.classe_id = c.id 
+            WHERE u.id = $1
+        `, [eleveId]);
+
+        if (eleveResult.rows.length === 0) return res.redirect('/connexion');
+        const eleve = eleveResult.rows[0];
+
+        // Présences / Absences / Retards
+        const presencesResult = await pool.query('SELECT * FROM presences WHERE eleve_id = $1 ORDER BY date_presence DESC', [eleveId]);
+        const presences = presencesResult.rows;
+
+        // Compteurs
+        const totalP = presences.filter(p => p.statut === 'PRESENT').length;
+        const totalA = presences.filter(p => p.statut === 'ABSENT').length;
+        const totalR = presences.filter(p => p.statut === 'RETARD').length;
+
+        // Devoirs de la classe
+        const devoirsResult = await pool.query('SELECT * FROM devoirs WHERE classe_id = $1 ORDER BY date_pour ASC', [eleve.classe_id]);
+        const devoirs = devoirsResult.rows;
+
+        // Notes
+        const notesResult = await pool.query('SELECT * FROM notes WHERE eleve_id = $1 ORDER BY date_saisie DESC', [eleveId]);
+        const notes = notesResult.rows;
+
+        let html = `
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Espace Élève - ${eleve.prenom} ${eleve.nom}</title>
+                <style>
+                    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+                    body { margin: 0; padding: 0; background-color: #f3f4f6; color: #1f2937; }
+                    header { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); color: white; padding: 25px 20px; }
+                    .header-content { max-width: 900px; margin: auto; display: flex; justify-content: space-between; align-items: center; }
+                    header h1 { margin: 0; font-size: 1.5rem; }
+                    header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 0.95rem; }
+                    .logout { background: #dc2626; color: white; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+                    .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
+                    .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+                    .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                    .stat-card h3 { margin: 0; font-size: 1.8rem; }
+                    .stat-card p { margin: 5px 0 0 0; color: #6b7280; font-size: 0.85rem; font-weight: bold; }
+                    .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+                    .card h2 { margin-top: 0; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; font-size: 1.2rem; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; font-size: 0.9rem; }
+                    th { background-color: #1e3a8a; color: white; }
+                    .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; color: white; display: inline-block; }
+                    .badge-present { background-color: #16a34a; }
+                    .badge-absent { background-color: #dc2626; }
+                    .badge-retard { background-color: #d97706; }
+                    .devoir-item { background: #f8fafc; border-left: 4px solid #2563eb; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
+                    .devoir-item h4 { margin: 0 0 5px 0; color: #1e40af; }
+                    .devoir-item p { margin: 0 0 5px 0; font-size: 0.95rem; }
+                    .devoir-item small { color: #64748b; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <header>
+                    <div class="header-content">
+                        <div>
+                            <h1>Bonjour, ${eleve.prenom} ${eleve.nom} ! 👋</h1>
+                            <p>Classe : <b>${eleve.nom_classe || 'Non assignée'}</b> | Code Élève : <b>${eleve.code_eleve}</b></p>
+                        </div>
+                        <a href="/" class="logout">Déconnexion</a>
+                    </div>
+                </header>
+
+                <div class="container">
+                    <!-- 1. COMPTEURS DE PRÉSENCES / ABSENCES / RETARDS -->
+                    <div class="grid-stats">
+                        <div class="stat-card">
+                            <h3 style="color: #16a34a;">${totalP}</h3>
+                            <p>PRÉSENCES</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 style="color: #dc2626;">${totalA}</h3>
+                            <p>ABSENCES</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 style="color: #d97706;">${totalR}</h3>
+                            <p>RETARDS</p>
+                        </div>
+                    </div>
+
+                    <!-- 2. CAHIER DE TEXTES (DEVOIRS & LEÇONS) -->
+                    <div class="card">
+                        <h2>📚 Devoirs & Leçons à Faire</h2>
+        `;
+
+        if (devoirs.length === 0) {
+            html += `<p style="color: #6b7280;">Aucun devoir enregistré pour le moment. Bravo ! 🎉</p>`;
+        } else {
+            devoirs.forEach(d => {
+                html += `
+                    <div class="devoir-item">
+                        <h4>Matière : ${d.matiere}</h4>
+                        <p>${d.description}</p>
+                        <small>📅 À rendre pour le : ${new Date(d.date_pour).toLocaleDateString('fr-FR')}</small>
+                    </div>
+                `;
+            });
+        }
+
+        html += `
+                    </div>
+
+                    <!-- 3. HISTORIQUE DE PRÉSENCE & RETARDS -->
+                    <div class="card">
+                        <h2>📅 Suivi des Présences & Retards</h2>
+        `;
+
+        if (presences.length === 0) {
+            html += `<p style="color: #6b7280;">Aucune prise de présence enregistrée pour l'instant.</p>`;
+        } else {
+            html += `
+                <table>
+                    <tr>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th>Remarque / Remarque du prof</th>
+                    </tr>
+            `;
+            presences.forEach(p => {
+                let badgeClass = 'badge-present';
+                if (p.statut === 'ABSENT') badgeClass = 'badge-absent';
+                if (p.statut === 'RETARD') badgeClass = 'badge-retard';
+
+                html += `
+                    <tr>
+                        <td><b>${new Date(p.date_presence).toLocaleDateString('fr-FR')}</b></td>
+                        <td><span class="badge ${badgeClass}">${p.statut}</span></td>
+                        <td>${p.remarque || 'Aucune'}</td>
+                    </tr>
+                `;
+            });
+            html += `</table>`;
+        }
+
+        html += `
+                    </div>
+
+                    <!-- 4. NOTES & BULLETINS -->
+                    <div class="card">
+                        <h2>📊 Relevé des Notes</h2>
+        `;
+
+        if (notes.length === 0) {
+            html += `<p style="color: #6b7280;">Aucune note enregistrée pour le moment.</p>`;
+        } else {
+            html += `
+                <table>
+                    <tr>
+                        <th>Matière</th>
+                        <th>Note</th>
+                        <th>Période</th>
+                    </tr>
+            `;
+            notes.forEach(n => {
+                html += `
+                    <tr>
+                        <td><b>${n.matiere}</b></td>
+                        <td><b style="color: #2563eb; font-size: 1.1rem;">${n.note}</b> / 100</td>
+                        <td>${n.periode}</td>
+                    </tr>
+                `;
+            });
+            html += `</table>`;
+        }
+
+        html += `
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+
+        res.send(html);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Erreur chargement espace élève.");
+    }
+});
+
+// 4. PANNEAU D'ADMINISTRATION
 app.get('/admin', async (req, res) => {
     try {
         const classesResult = await pool.query('SELECT * FROM classes ORDER BY nom');
@@ -184,6 +383,7 @@ app.get('/admin', async (req, res) => {
             <html lang="fr">
             <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Administration - LEKOL S&H</title>
                 <style>
                     body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; margin: 0; padding: 20px; }
@@ -195,12 +395,10 @@ app.get('/admin', async (req, res) => {
                     .btn { background-color: #2563eb; color: white; padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
                     .btn:hover { background-color: #1d4ed8; }
                     .btn-danger { background-color: #dc2626; padding: 6px 12px; font-size: 0.85rem; }
-                    .btn-danger:hover { background-color: #b91c1c; }
                     table { width: 100%; border-collapse: collapse; margin-top: 12px; background: white; }
                     th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-size: 0.9rem; }
                     th { background-color: #1e3a8a; color: white; }
                     .logout { float: right; background: #dc2626; color: white; padding: 10px 18px; text-decoration: none; border-radius: 6px; font-size: 0.9rem; font-weight: bold; }
-                    .logout:hover { background: #b91c1c; }
                 </style>
             </head>
             <body>
@@ -208,7 +406,7 @@ app.get('/admin', async (req, res) => {
                     <a href="/" class="logout">Déconnexion</a>
                     <h1>⚙️ Panneau de Direction - LEKOL S&H</h1>
                     
-                    <!-- SECTION 1 : Annonces (Ajout & Suppression) -->
+                    <!-- SECTION 1 : Annonces -->
                     <div class="section">
                         <h2>📢 Gérer les Annonces Officielles</h2>
                         <form action="/admin/annonce" method="POST" style="margin-bottom: 20px;">
@@ -248,53 +446,33 @@ app.get('/admin', async (req, res) => {
                         </table>
                     </div>
 
-                    <!-- SECTION 2 : Ajouter des membres de la direction ou professeurs -->
+                    <!-- SECTION 2 : Publier des devoirs pour une classe -->
                     <div class="section">
-                        <h2>👨‍💼 Ajouter un Membre du Staff (Direction / Professeur)</h2>
-                        <form action="/admin/staff" method="POST">
-                            <label>Nom</label>
-                            <input type="text" name="nom" required placeholder="Nom de famille">
-                            
-                            <label>Prénom</label>
-                            <input type="text" name="prenom" required placeholder="Prénom">
-                            
-                            <label>Email de connexion</label>
-                            <input type="email" name="email" required placeholder="email@lekolsh.com">
-                            
-                            <label>Mot de passe</label>
-                            <input type="password" name="password" required placeholder="Mot de passe sécurisé">
-                            
-                            <label>Rôle dans l'établissement</label>
-                            <select name="role" required>
-                                <option value="ADMIN">Direction (Administrateur)</option>
-                                <option value="TITULAIRE">Professeur Titulaire (Principal)</option>
-                                <option value="PROF">Professeur Intervenant</option>
-                            </select>
-                            
-                            <button type="submit" class="btn">Ajouter ce membre</button>
-                        </form>
-
-                        <h3 style="margin-top: 25px;">Équipe Administrative & Enseignants Enregistrés :</h3>
-                        <table>
-                            <tr>
-                                <th>Nom & Prénom</th>
-                                <th>Email</th>
-                                <th>Rôle</th>
-                            </tr>
+                        <h2>📚 Donner un Devoir à une Classe</h2>
+                        <form action="/admin/devoir" method="POST">
+                            <label>Classe concernée</label>
+                            <select name="classe_id" required>
+                                <option value="">-- Choisir une classe --</option>
         `;
 
-        staffResult.rows.forEach(s => {
-            html += `
-                <tr>
-                    <td>${s.nom} ${s.prenom}</td>
-                    <td>${s.email}</td>
-                    <td><b>${s.role}</b></td>
-                </tr>
-            `;
+        classesResult.rows.forEach(c => {
+            html += `<option value="${c.id}">${c.nom} (${c.niveau})</option>`;
         });
 
         html += `
-                        </table>
+                            </select>
+
+                            <label>Matière</label>
+                            <input type="text" name="matiere" required placeholder="Ex: Mathématiques, Grammaire...">
+
+                            <label>Description du devoir / leçon</label>
+                            <textarea name="description" rows="2" required placeholder="Consignes du devoir..."></textarea>
+
+                            <label>Pour quel jour ? (Date de rendu)</label>
+                            <input type="date" name="date_pour" required>
+
+                            <button type="submit" class="btn">Publier le Devoir</button>
+                        </form>
                     </div>
 
                     <!-- SECTION 3 : Inscrire un élève -->
@@ -359,7 +537,7 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Traitement : Ajouter une annonce
+// Traitements Admin
 app.post('/admin/annonce', async (req, res) => {
     const { titre, contenu } = req.body;
     try {
@@ -371,39 +549,35 @@ app.post('/admin/annonce', async (req, res) => {
     }
 });
 
-// Traitement : Supprimer une annonce
 app.post('/admin/annonce/delete/:id', async (req, res) => {
-    const annonceId = req.params.id;
     try {
-        await pool.query('DELETE FROM annonces WHERE id = $1', [annonceId]);
+        await pool.query('DELETE FROM annonces WHERE id = $1', [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
-        res.status(500).send("Erreur lors de la suppression de l'annonce.");
+        res.status(500).send("Erreur suppression.");
     }
 });
 
-// Traitement : Ajouter un membre du staff (Admin ou Prof)
-app.post('/admin/staff', async (req, res) => {
-    const { nom, prenom, email, password, role } = req.body;
+app.post('/admin/devoir', async (req, res) => {
+    const { classe_id, matiere, description, date_pour } = req.body;
     try {
         await pool.query(
-            'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role) VALUES ($1, $2, $3, $4, $5)',
-            [nom, prenom, email, password, role]
+            'INSERT INTO devoirs (classe_id, matiere, description, date_pour) VALUES ($1, $2, $3, $4)',
+            [classe_id, matiere, description, date_pour]
         );
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
-        res.status(500).send("Erreur lors de l'ajout du membre du staff.");
+        res.status(500).send("Erreur publication devoir.");
     }
 });
 
-// Traitement : Inscrire un élève et générer son code unique
 app.post('/admin/eleve', async (req, res) => {
     const { nom, prenom, classe_id, password } = req.body;
     try {
         const randomNum = Math.floor(1000 + Math.random() * 9000);
-        const code_eleve = `S&H-${randomNum}`; // Code personnalisé aux couleurs de l'école
+        const code_eleve = `S&H-${randomNum}`;
 
         await pool.query(
             'INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -413,7 +587,7 @@ app.post('/admin/eleve', async (req, res) => {
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
-        res.status(500).send("Erreur lors de l'inscription de l'élève.");
+        res.status(500).send("Erreur inscription élève.");
     }
 });
 
