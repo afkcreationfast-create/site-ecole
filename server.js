@@ -20,7 +20,7 @@ pool.connect()
     .then(() => console.log('✅ Connexion à Supabase réussie !'))
     .catch(err => console.error('❌ Erreur de connexion à Supabase :', err));
 
-// 1. ROUTE ACCUEIL : Page d'accueil LEKOL S&H
+// 1. ACCUEIL
 app.get('/', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM annonces ORDER BY date_publication DESC');
@@ -100,7 +100,7 @@ app.get('/', async (req, res) => {
     }
 });
 
-// 2. ROUTE CONNEXION
+// 2. CONNEXION
 app.get('/connexion', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -125,7 +125,7 @@ app.get('/connexion', (req, res) => {
                 <h2>Connexion LEKOL S&H</h2>
                 <form action="/connexion" method="POST">
                     <label>Identifiant (Email ou Code Élève)</label>
-                    <input type="text" name="identifiant" required placeholder="Ex: S&H-1234 ou fransenaugustin0@gmail.com">
+                    <input type="text" name="identifiant" required placeholder="Ex: S&H-9518 ou email@example.com">
                     
                     <label>Mot de passe</label>
                     <input type="password" name="password" required placeholder="Votre mot de passe">
@@ -139,7 +139,6 @@ app.get('/connexion', (req, res) => {
     `);
 });
 
-// Traitement de la connexion (Direction vs Élève/Parent)
 app.post('/connexion', async (req, res) => {
     const { identifiant, password } = req.body;
     try {
@@ -150,12 +149,10 @@ app.post('/connexion', async (req, res) => {
 
         if (result.rows.length > 0) {
             const user = result.rows[0];
-            if (user.role === 'ADMIN') {
+            if (user.role === 'ADMIN' || user.role === 'TITULAIRE' || user.role === 'PROF') {
                 res.redirect(`/admin`);
             } else if (user.role === 'ELEVE' || user.role === 'PARENT') {
                 res.redirect(`/espace-eleve?id=${user.id}`);
-            } else {
-                res.send(`<h1>Espace Professeur en cours de finalisation</h1><a href="/">Retour</a>`);
             }
         } else {
             res.send(`<script>alert('Identifiant ou mot de passe incorrect'); window.location.href='/connexion';</script>`);
@@ -166,13 +163,12 @@ app.post('/connexion', async (req, res) => {
     }
 });
 
-// 3. ESPACE ÉLÈVE & PARENT (Suivi des Présences/Absences/Retards + Devoirs)
+// 3. ESPACE ÉLÈVE & PARENT (AVEC PROFIL PERSONNALISABLE)
 app.get('/espace-eleve', async (req, res) => {
     const eleveId = req.query.id;
     if (!eleveId) return res.redirect('/connexion');
 
     try {
-        // Infos de l'élève
         const eleveResult = await pool.query(`
             SELECT u.*, c.nom as nom_classe 
             FROM utilisateurs u 
@@ -183,20 +179,16 @@ app.get('/espace-eleve', async (req, res) => {
         if (eleveResult.rows.length === 0) return res.redirect('/connexion');
         const eleve = eleveResult.rows[0];
 
-        // Présences / Absences / Retards
         const presencesResult = await pool.query('SELECT * FROM presences WHERE eleve_id = $1 ORDER BY date_presence DESC', [eleveId]);
         const presences = presencesResult.rows;
 
-        // Compteurs
         const totalP = presences.filter(p => p.statut === 'PRESENT').length;
         const totalA = presences.filter(p => p.statut === 'ABSENT').length;
         const totalR = presences.filter(p => p.statut === 'RETARD').length;
 
-        // Devoirs de la classe
         const devoirsResult = await pool.query('SELECT * FROM devoirs WHERE classe_id = $1 ORDER BY date_pour ASC', [eleve.classe_id]);
         const devoirs = devoirsResult.rows;
 
-        // Notes
         const notesResult = await pool.query('SELECT * FROM notes WHERE eleve_id = $1 ORDER BY date_saisie DESC', [eleveId]);
         const notes = notesResult.rows;
 
@@ -212,8 +204,8 @@ app.get('/espace-eleve', async (req, res) => {
                     body { margin: 0; padding: 0; background-color: #f3f4f6; color: #1f2937; }
                     header { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); color: white; padding: 25px 20px; }
                     .header-content { max-width: 900px; margin: auto; display: flex; justify-content: space-between; align-items: center; }
-                    header h1 { margin: 0; font-size: 1.5rem; }
-                    header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 0.95rem; }
+                    header h1 { margin: 0; font-size: 1.4rem; }
+                    header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 0.9rem; }
                     .logout { background: #dc2626; color: white; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
                     .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
                     .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
@@ -222,6 +214,8 @@ app.get('/espace-eleve', async (req, res) => {
                     .stat-card p { margin: 5px 0 0 0; color: #6b7280; font-size: 0.85rem; font-weight: bold; }
                     .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
                     .card h2 { margin-top: 0; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; font-size: 1.2rem; }
+                    input { width: 100%; padding: 10px; margin: 6px 0 12px 0; border: 1px solid #d1d5db; border-radius: 6px; }
+                    .btn { background-color: #2563eb; color: white; padding: 10px 18px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
                     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
                     th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; font-size: 0.9rem; }
                     th { background-color: #1e3a8a; color: white; }
@@ -230,9 +224,6 @@ app.get('/espace-eleve', async (req, res) => {
                     .badge-absent { background-color: #dc2626; }
                     .badge-retard { background-color: #d97706; }
                     .devoir-item { background: #f8fafc; border-left: 4px solid #2563eb; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
-                    .devoir-item h4 { margin: 0 0 5px 0; color: #1e40af; }
-                    .devoir-item p { margin: 0 0 5px 0; font-size: 0.95rem; }
-                    .devoir-item small { color: #64748b; font-weight: bold; }
                 </style>
             </head>
             <body>
@@ -247,7 +238,6 @@ app.get('/espace-eleve', async (req, res) => {
                 </header>
 
                 <div class="container">
-                    <!-- 1. COMPTEURS DE PRÉSENCES / ABSENCES / RETARDS -->
                     <div class="grid-stats">
                         <div class="stat-card">
                             <h3 style="color: #16a34a;">${totalP}</h3>
@@ -263,7 +253,7 @@ app.get('/espace-eleve', async (req, res) => {
                         </div>
                     </div>
 
-                    <!-- 2. CAHIER DE TEXTES (DEVOIRS & LEÇONS) -->
+                    <!-- CAHIER DE TEXTES -->
                     <div class="card">
                         <h2>📚 Devoirs & Leçons à Faire</h2>
         `;
@@ -274,9 +264,9 @@ app.get('/espace-eleve', async (req, res) => {
             devoirs.forEach(d => {
                 html += `
                     <div class="devoir-item">
-                        <h4>Matière : ${d.matiere}</h4>
-                        <p>${d.description}</p>
-                        <small>📅 À rendre pour le : ${new Date(d.date_pour).toLocaleDateString('fr-FR')}</small>
+                        <h4 style="margin:0 0 5px 0; color:#1e40af;">Matière : ${d.matiere}</h4>
+                        <p style="margin:0 0 5px 0;">${d.description}</p>
+                        <small style="color:#64748b; font-weight:bold;">📅 À rendre pour le : ${new Date(d.date_pour).toLocaleDateString('fr-FR')}</small>
                     </div>
                 `;
             });
@@ -285,7 +275,7 @@ app.get('/espace-eleve', async (req, res) => {
         html += `
                     </div>
 
-                    <!-- 3. HISTORIQUE DE PRÉSENCE & RETARDS -->
+                    <!-- SUIVI DE PRÉSENCE -->
                     <div class="card">
                         <h2>📅 Suivi des Présences & Retards</h2>
         `;
@@ -298,7 +288,7 @@ app.get('/espace-eleve', async (req, res) => {
                     <tr>
                         <th>Date</th>
                         <th>Statut</th>
-                        <th>Remarque / Remarque du prof</th>
+                        <th>Remarque</th>
                     </tr>
             `;
             presences.forEach(p => {
@@ -320,7 +310,7 @@ app.get('/espace-eleve', async (req, res) => {
         html += `
                     </div>
 
-                    <!-- 4. NOTES & BULLETINS -->
+                    <!-- RELEVÉ DES NOTES -->
                     <div class="card">
                         <h2>📊 Relevé des Notes</h2>
         `;
@@ -349,10 +339,26 @@ app.get('/espace-eleve', async (req, res) => {
         }
 
         html += `
+                    </div>
+
+                    <!-- SECTION SÉCURITÉ / SOUVERAINETÉ (MODIFIER MOT DE PASSE & EMAIL) -->
+                    <div class="card" style="background: #fffbeb; border-left: 5px solid #f59e0b;">
+                        <h2>🔒 Mon Profil & Sécurité du Compte</h2>
+                        <form action="/espace-eleve/update" method="POST">
+                            <input type="hidden" name="eleve_id" value="${eleve.id}">
+                            
+                            <label><b>Nouveau Mot de Passe (pour remplacer "ecole2026")</b></label>
+                            <input type="password" name="password" value="${eleve.mot_de_passe}" required>
+
+                            <label><b>Adresse E-mail de contact</b></label>
+                            <input type="email" name="email" value="${eleve.email || ''}" placeholder="votre-email@gmail.com">
+
+                            <button type="submit" class="btn" style="background:#f59e0b;">Enregistrer mes informations</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
-        </body>
-        </html>
+            </body>
+            </html>
         `;
 
         res.send(html);
@@ -362,7 +368,22 @@ app.get('/espace-eleve', async (req, res) => {
     }
 });
 
-// 4. PANNEAU D'ADMINISTRATION
+// Mettre à jour son mot de passe et son email (Élève)
+app.post('/espace-eleve/update', async (req, res) => {
+    const { eleve_id, password, email } = req.body;
+    try {
+        await pool.query(
+            'UPDATE utilisateurs SET mot_de_passe = $1, email = $2 WHERE id = $3',
+            [password, email, eleve_id]
+        );
+        res.send(`<script>alert('Informations mises à jour avec succès !'); window.location.href='/espace-eleve?id=${eleve_id}';</script>`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Erreur lors de la mise à jour des informations.");
+    }
+});
+
+// 4. PANNEAU ADMIN & TITULAIRE (CONTRÔLE DES PRÉSENCES ET NOTES)
 app.get('/admin', async (req, res) => {
     try {
         const classesResult = await pool.query('SELECT * FROM classes ORDER BY nom');
@@ -372,10 +393,6 @@ app.get('/admin', async (req, res) => {
             FROM utilisateurs u 
             LEFT JOIN classes c ON u.classe_id = c.id 
             WHERE u.role = 'ELEVE' ORDER BY u.id DESC
-        `);
-        const staffResult = await pool.query(`
-            SELECT * FROM utilisateurs 
-            WHERE role IN ('ADMIN', 'TITULAIRE', 'PROF') ORDER BY role, nom
         `);
 
         let html = `
@@ -387,13 +404,12 @@ app.get('/admin', async (req, res) => {
                 <title>Administration - LEKOL S&H</title>
                 <style>
                     body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; margin: 0; padding: 20px; }
-                    .admin-container { max-width: 1000px; margin: auto; background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                    .admin-container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
                     h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 0; }
                     .section { margin-bottom: 35px; padding: 25px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
-                    h2 { color: #374151; font-size: 1.25rem; margin-top: 0; }
-                    input, select, textarea { width: 100%; padding: 12px; margin: 6px 0 15px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
+                    h2 { color: #374151; font-size: 1.2rem; margin-top: 0; }
+                    input, select, textarea { width: 100%; padding: 12px; margin: 6px 0 15px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
                     .btn { background-color: #2563eb; color: white; padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-                    .btn:hover { background-color: #1d4ed8; }
                     .btn-danger { background-color: #dc2626; padding: 6px 12px; font-size: 0.85rem; }
                     table { width: 100%; border-collapse: collapse; margin-top: 12px; background: white; }
                     th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-size: 0.9rem; }
@@ -406,57 +422,50 @@ app.get('/admin', async (req, res) => {
                     <a href="/" class="logout">Déconnexion</a>
                     <h1>⚙️ Panneau de Direction - LEKOL S&H</h1>
                     
-                    <!-- SECTION 1 : Annonces -->
-                    <div class="section">
-                        <h2>📢 Gérer les Annonces Officielles</h2>
-                        <form action="/admin/annonce" method="POST" style="margin-bottom: 20px;">
-                            <label>Titre de l'annonce</label>
-                            <input type="text" name="titre" required placeholder="Ex: Examen du 7 novembre / Congé...">
-                            
-                            <label>Contenu du message</label>
-                            <textarea name="contenu" rows="3" required placeholder="Détails de l'annonce..."></textarea>
-                            
-                            <button type="submit" class="btn">Publier l'annonce</button>
-                        </form>
-
-                        <h3>Annonces Actives :</h3>
-                        <table>
-                            <tr>
-                                <th>Titre</th>
-                                <th>Date</th>
-                                <th>Action</th>
-                            </tr>
+                    <!-- MARQUER PRÉSENCE / ABSENCE / RETARD -->
+                    <div class="section" style="background:#f0fdf4; border-color:#bbf7d0;">
+                        <h2 style="color:#166534;">📝 Faire l'Appel (Saisir Présence, Absence ou Retard)</h2>
+                        <form action="/admin/presence" method="POST">
+                            <label>Sélectionner l'Élève</label>
+                            <select name="eleve_id" required>
+                                <option value="">-- Choisir un élève --</option>
         `;
 
-        annoncesResult.rows.forEach(a => {
-            html += `
-                <tr>
-                    <td><b>${a.titre}</b><br><small>${a.contenu}</small></td>
-                    <td>${new Date(a.date_publication).toLocaleDateString('fr-FR')}</td>
-                    <td>
-                        <form action="/admin/annonce/delete/${a.id}" method="POST" style="margin:0;">
-                            <button type="submit" class="btn btn-danger">Retirer</button>
-                        </form>
-                    </td>
-                </tr>
-            `;
+        elevesResult.rows.forEach(e => {
+            html += `<option value="${e.id}">${e.nom} ${e.prenom} (${e.nom_classe || 'Sans classe'}) - Code: ${e.code_eleve}</option>`;
         });
 
         html += `
-                        </table>
+                            </select>
+
+                            <label>Statut</label>
+                            <select name="statut" required>
+                                <option value="PRESENT">PRESENT</option>
+                                <option value="ABSENT">ABSENT</option>
+                                <option value="RETARD">RETARD</option>
+                            </select>
+
+                            <label>Date de la prise de présence</label>
+                            <input type="date" name="date_presence" required value="${new Date().toISOString().split('T')[0]}">
+
+                            <label>Remarque (facultative)</label>
+                            <input type="text" name="remarque" placeholder="Ex: Arrivé avec 20 min de retard / Justifié par mot du parent">
+
+                            <button type="submit" class="btn" style="background:#16a34a;">Enregistrer la Présence</button>
+                        </form>
                     </div>
 
-                    <!-- SECTION 2 : Publier des devoirs pour une classe -->
-                    <div class="section">
-                        <h2>📚 Donner un Devoir à une Classe</h2>
-                        <form action="/admin/devoir" method="POST">
-                            <label>Classe concernée</label>
-                            <select name="classe_id" required>
-                                <option value="">-- Choisir une classe --</option>
+                    <!-- ATTRIBUER UNE NOTE -->
+                    <div class="section" style="background:#eff6ff; border-color:#bfdbfe;">
+                        <h2 style="color:#1e40af;">📊 Ajouter une Note à un Élève</h2>
+                        <form action="/admin/note" method="POST">
+                            <label>Sélectionner l'Élève</label>
+                            <select name="eleve_id" required>
+                                <option value="">-- Choisir un élève --</option>
         `;
 
-        classesResult.rows.forEach(c => {
-            html += `<option value="${c.id}">${c.nom} (${c.niveau})</option>`;
+        elevesResult.rows.forEach(e => {
+            html += `<option value="${e.id}">${e.nom} ${e.prenom} (${e.nom_classe || 'Sans classe'})</option>`;
         });
 
         html += `
@@ -465,65 +474,51 @@ app.get('/admin', async (req, res) => {
                             <label>Matière</label>
                             <input type="text" name="matiere" required placeholder="Ex: Mathématiques, Grammaire...">
 
-                            <label>Description du devoir / leçon</label>
-                            <textarea name="description" rows="2" required placeholder="Consignes du devoir..."></textarea>
+                            <label>Note obtenues (sur 100)</label>
+                            <input type="number" step="0.5" name="note" required placeholder="Ex: 85">
 
-                            <label>Pour quel jour ? (Date de rendu)</label>
-                            <input type="date" name="date_pour" required>
+                            <label>Période / Contrôle</label>
+                            <input type="text" name="periode" required placeholder="Ex: 1er Contrôle / Examen Trimestriel">
 
-                            <button type="submit" class="btn">Publier le Devoir</button>
+                            <button type="submit" class="btn" style="background:#2563eb;">Enregistrer la Note</button>
                         </form>
                     </div>
 
-                    <!-- SECTION 3 : Inscrire un élève -->
+                    <!-- PUBLIER DES ANNONCES -->
+                    <div class="section">
+                        <h2>📢 Gérer les Annonces Officielles</h2>
+                        <form action="/admin/annonce" method="POST" style="margin-bottom: 20px;">
+                            <label>Titre de l'annonce</label>
+                            <input type="text" name="titre" required placeholder="Ex: Congé du 18 mai...">
+                            <label>Contenu</label>
+                            <textarea name="contenu" rows="2" required></textarea>
+                            <button type="submit" class="btn">Publier l'annonce</button>
+                        </form>
+                    </div>
+
+                    <!-- INSCRIRE UN ÉLÈVE -->
                     <div class="section">
                         <h2>➕ Inscrire un Élève (Génération automatique du Code)</h2>
                         <form action="/admin/eleve" method="POST">
-                            <label>Nom de l'élève</label>
-                            <input type="text" name="nom" required placeholder="Nom de famille">
-                            
-                            <label>Prénom de l'élève</label>
-                            <input type="text" name="prenom" required placeholder="Prénom">
-                            
+                            <label>Nom</label>
+                            <input type="text" name="nom" required>
+                            <label>Prénom</label>
+                            <input type="text" name="prenom" required>
                             <label>Classe</label>
                             <select name="classe_id" required>
                                 <option value="">-- Choisir une classe --</option>
         `;
 
         classesResult.rows.forEach(c => {
-            html += `<option value="${c.id}">${c.nom} (${c.niveau})</option>`;
+            html += `<option value="${c.id}">${c.nom}</option>`;
         });
 
         html += `
                             </select>
-                            
-                            <label>Mot de passe initial (accès parent/élève)</label>
+                            <label>Mot de passe initial</label>
                             <input type="text" name="password" required value="ecole2026">
-                            
-                            <button type="submit" class="btn">Enregistrer l'élève & Générer son Code</button>
+                            <button type="submit" class="btn">Enregistrer l'élève</button>
                         </form>
-
-                        <h3 style="margin-top: 25px;">Liste des Élèves Enregistrés :</h3>
-                        <table>
-                            <tr>
-                                <th>Code Élève unique</th>
-                                <th>Nom & Prénom</th>
-                                <th>Classe</th>
-                            </tr>
-        `;
-
-        elevesResult.rows.forEach(e => {
-            html += `
-                <tr>
-                    <td><b>${e.code_eleve}</b></td>
-                    <td>${e.nom} ${e.prenom}</td>
-                    <td>${e.nom_classe || 'Non assigné'}</td>
-                </tr>
-            `;
-        });
-
-        html += `
-                        </table>
                     </div>
                 </div>
             </body>
@@ -537,7 +532,37 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Traitements Admin
+// Traitement : Enregistrer Présence / Absence / Retard
+app.post('/admin/presence', async (req, res) => {
+    const { eleve_id, statut, date_presence, remarque } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO presences (eleve_id, statut, date_presence, remarque) VALUES ($1, $2, $3, $4)',
+            [eleve_id, statut, date_presence, remarque]
+        );
+        res.redirect('/admin');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Erreur enregistrement présence.");
+    }
+});
+
+// Traitement : Enregistrer une Note
+app.post('/admin/note', async (req, res) => {
+    const { eleve_id, matiere, note, periode } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO notes (eleve_id, matiere, note, periode) VALUES ($1, $2, $3, $4)',
+            [eleve_id, matiere, note, periode]
+        );
+        res.redirect('/admin');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Erreur enregistrement note.");
+    }
+});
+
+// Traitements divers Admin
 app.post('/admin/annonce', async (req, res) => {
     const { titre, contenu } = req.body;
     try {
@@ -546,30 +571,6 @@ app.post('/admin/annonce', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send("Erreur ajout annonce.");
-    }
-});
-
-app.post('/admin/annonce/delete/:id', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM annonces WHERE id = $1', [req.params.id]);
-        res.redirect('/admin');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erreur suppression.");
-    }
-});
-
-app.post('/admin/devoir', async (req, res) => {
-    const { classe_id, matiere, description, date_pour } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO devoirs (classe_id, matiere, description, date_pour) VALUES ($1, $2, $3, $4)',
-            [classe_id, matiere, description, date_pour]
-        );
-        res.redirect('/admin');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erreur publication devoir.");
     }
 });
 
