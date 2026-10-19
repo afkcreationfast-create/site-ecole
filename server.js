@@ -114,7 +114,7 @@ app.get('/connexion', (req, res) => {
                 h2 { color: #1e3a8a; margin-top: 0; text-align: center; }
                 label { font-weight: bold; font-size: 0.9rem; color: #374151; }
                 input { width: 100%; padding: 10px; margin: 8px 0 15px 0; border: 1px solid #d1d5db; border-radius: 5px; box-sizing: border-box; }
-                .btn { background-color: #2563eb; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; font-weight: bold; cursor: font; font-size: 1rem; }
+                .btn { background-color: #2563eb; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer; font-size: 1rem; }
                 .btn:hover { background-color: #1d4ed8; }
                 .back { display: block; text-align: center; margin-top: 15px; color: #4b5563; text-decoration: none; font-size: 0.9rem; }
             </style>
@@ -124,7 +124,7 @@ app.get('/connexion', (req, res) => {
                 <h2>Connexion</h2>
                 <form action="/connexion" method="POST">
                     <label>Identifiant (Email ou Code Élève)</label>
-                    <input type="text" name="identifiant" required placeholder="Ex: ELEV2026-001 ou admin@ecole.com">
+                    <input type="text" name="identifiant" required placeholder="Ex: fransenaugustin0@gmail.com">
                     
                     <label>Mot de passe</label>
                     <input type="password" name="password" required placeholder="Votre mot de passe">
@@ -138,7 +138,7 @@ app.get('/connexion', (req, res) => {
     `);
 });
 
-// Traitement de la connexion (Vérification simple Admin / Rôle)
+// Traitement de la connexion
 app.post('/connexion', async (req, res) => {
     const { identifiant, password } = req.body;
     try {
@@ -168,7 +168,7 @@ app.get('/admin', async (req, res) => {
     try {
         const classesResult = await pool.query('SELECT * FROM classes ORDER BY nom');
         const elevesResult = await pool.query(`
-            u.*, c.nom as nom_classe 
+            SELECT u.*, c.nom as nom_classe 
             FROM utilisateurs u 
             LEFT JOIN classes c ON u.classe_id = c.id 
             WHERE u.role = 'ELEVE' ORDER BY u.id DESC
@@ -295,7 +295,6 @@ app.post('/admin/annonce', async (req, res) => {
 app.post('/admin/eleve', async (req, res) => {
     const { nom, prenom, classe_id, password } = req.body;
     try {
-        // Générer un code unique automatique (Ex: ELEV-1042)
         const randomNum = Math.floor(1000 + Math.random() * 9000);
         const code_eleve = `ELEV-${randomNum}`;
 
