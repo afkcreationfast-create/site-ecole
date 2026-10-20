@@ -6,43 +6,13 @@ const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const fileUpload = require("express-fileupload");
 require("dotenv").config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === "production";
 const rolesAdmin = ["ADMIN", "TITULAIRE", "PROF"];
-
-// Configuration du dossier d'upload
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configuration de Multer pour le stockage des images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueName = Date.now() + "-" + crypto.randomInt(1000, 9999) + ext;
-    cb(null, uniqueName);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5 Mo par image
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) cb(null, true);
-    else cb(new Error("Seules les images (jpg, png, gif, webp) sont autorisées."));
-  }
-});
 
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
   console.error("Configure DATABASE_URL et SESSION_SECRET dans Render.");
@@ -61,11 +31,9 @@ pool.on("error", err => console.error("Erreur PostgreSQL:", err.message));
 app.disable("x-powered-by");
 if (isProduction) app.set("trust proxy", 1);
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.urlencoded({ extended: false, limit: "30kb" }));
-app.use(express.json({ limit: "30kb" }));
-
-// Servir les fichiers d'images uploadés
-app.use("/uploads", express.static(uploadDir));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(fileUpload({ limits: { fileSize: 5 * 1024 * 1024 } }));
 
 app.use(session({
   store: new PgSession({
@@ -177,6 +145,12 @@ th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 13px
 th { background: #f8fafc; color: #475569; font-weight: 700; }
 .badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
 .badge.success { background: #dcfce7; color: #15803d; }
+.badge.danger { background: #fee2e2; color: #b91c1c; }
+.badge.warning { background: #fef3c7; color: #b45309; }
+.badge.FÉRIÉ { background: #fee2e2; color: #b91c1c; }
+.badge.CONGÉ { background: #fef3c7; color: #b45309; }
+.badge.EXAMEN { background: #e0e7ff; color: #3730a3; }
+.badge.ÉVÉNEMENT { background: #dcfce7; color: #15803d; }
 
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
@@ -246,7 +220,6 @@ function csrfField(req) {
 
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    // Exclure la vérification CSRF brute pour les formulaires multipart/form-data gérés par Multer
     if (req.headers["content-type"] && req.headers["content-type"].includes("multipart/form-data")) {
       return next();
     }
@@ -305,17 +278,46 @@ app.get("/", async (req, res) => {
   }
 });
 
-// ROUTE GALERIE
-app.get("/galerie", async (req, res) => {
+// ROUTE CALENDRIER (SÉCURISÉE SANS ERREUR)
+app.get("/calendrier", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT id, titre, description, image_url FROM galerie ORDER BY id DESC");
+    const evts = await pool.query("SELECT titre, date_evenement, type_evt, description FROM evenements ORDER BY date_evenement ASC");
     const content = `
       <section class="card">
-        <h2>📸 Galerie Photos de LEKOL S&amp;H</h2>
+        <h2>📅 Calendrier Scolaire &amp; Jours Fériés — LEKOL S&amp;H</h2>
+        <p style="color:var(--muted);margin-bottom:15px">Consultez les dates d'examens, congés officiels et événements importants.</p>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Date</th><th>Événement / Congé</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            ${evts.rows.map(e => `
+              <tr>
+                <td><b>${dateFr(e.date_evenement)}</b></td>
+                <td><b>${h(e.titre)}</b></td>
+                <td><span class="badge ${h(e.type_evt)}">${h(e.type_evt)}</span></td>
+                <td>${h(e.description || "—")}</td>
+              </tr>
+            `).join("") || "<tr><td colspan='4'>Aucun jour férié ou congé enregistré.</td></tr>"}
+          </tbody>
+        </table></div>
+      </section>`;
+    res.send(layout("Calendrier Scolaire", content, req));
+  } catch (e) {
+    console.error("Erreur calendrier:", e);
+    res.status(500).send(layout("Erreur", "<section class='card'><h2>Erreur calendrier</h2><p>Exécutez le script SQL dans Supabase.</p></section>", req));
+  }
+});
+
+// ROUTE GALERIE (SÉCURISÉE ET STOCKÉE EN BASE64)
+app.get("/galerie", async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT id, titre, description, image_data FROM galerie ORDER BY id DESC");
+    const content = `
+      <section class="card">
+        <h2>📸 Galerie Photos — LEKOL S&amp;H</h2>
         <div class="grid" style="margin-top:15px">
           ${rows.map(g => `
             <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff">
-              <img src="${h(g.image_url)}" alt="${h(g.titre)}" style="width:100%;height:200px;object-fit:cover">
+              <img src="${g.image_data}" alt="${h(g.titre)}" style="width:100%;height:200px;object-fit:cover">
               <div style="padding:14px">
                 <strong style="color:var(--navy);display:block">${h(g.titre)}</strong>
                 <small style="color:var(--muted)">${h(g.description || "")}</small>
@@ -327,34 +329,6 @@ app.get("/galerie", async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).send("Erreur galerie.");
-  }
-});
-
-// CALENDRIER
-app.get("/calendrier", async (req, res) => {
-  try {
-    const evts = await pool.query("SELECT titre, date_evenement, type_evt, description FROM evenements ORDER BY date_evenement ASC");
-    const content = `
-      <section class="card">
-        <h2>📅 Calendrier Scolaire &amp; Jours Fériés — LEKOL S&amp;H</h2>
-        <div class="tablewrap"><table>
-          <thead><tr><th>Date</th><th>Événement / Congé</th><th>Type</th><th>Description</th></tr></thead>
-          <tbody>
-            ${evts.rows.map(e => `
-              <tr>
-                <td><b>${dateFr(e.date_evenement)}</b></td>
-                <td><b>${h(e.titre)}</b></td>
-                <td><span class="badge ${e.type_evt}">${h(e.type_evt)}</span></td>
-                <td>${h(e.description || "—")}</td>
-              </tr>
-            `).join("") || "<tr><td colspan='4'>Aucun jour férié ou congé enregistré.</td></tr>"}
-          </tbody>
-        </table></div>
-      </section>`;
-    res.send(layout("Calendrier Scolaire", content, req));
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("Erreur calendrier.");
   }
 });
 
@@ -433,13 +407,13 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   }
 });
 
-// PANNEAU ADMINISTRATION AVEC UPLOAD DE FICHIER PHOTO
+// ADMIN AVEC UPLOAD PHOTO EN BASE64
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students, photos] = await Promise.all([
       pool.query("SELECT id, nom FROM classes ORDER BY nom"),
       pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC"),
-      pool.query("SELECT id, titre, image_url FROM galerie ORDER BY id DESC LIMIT 10")
+      pool.query("SELECT id, titre, image_data FROM galerie ORDER BY id DESC LIMIT 10")
     ]);
 
     const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
@@ -459,7 +433,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
           <form method="post" action="/admin/galerie/upload" enctype="multipart/form-data">
             <label>Titre de l'événement / photo</label>
             <input name="titre" required placeholder="Ex. Fête du drapeau, remise des prix...">
-            <label>Sélectionner une photo depuis votre appareil (PNG, JPG, WEBP)</label>
+            <label>Sélectionner une photo depuis votre appareil (PNG, JPG)</label>
             <input type="file" name="photo" accept="image/*" required style="padding:8px">
             <label>Description (facultative)</label>
             <textarea name="description" placeholder="Courte explication..."></textarea>
@@ -498,7 +472,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
             <tbody>
               ${photos.rows.map(p => `
                 <tr>
-                  <td><img src="${h(p.image_url)}" style="width:50px;height:50px;object-fit:cover;border-radius:6px"></td>
+                  <td><img src="${p.image_data}" style="width:50px;height:50px;object-fit:cover;border-radius:6px"></td>
                   <td><b>${h(p.titre)}</b></td>
                   <td>
                     <form method="post" action="/admin/galerie/supprimer/${p.id}">
@@ -520,27 +494,28 @@ app.get("/admin", requireAdmin, async (req, res) => {
   }
 });
 
-// ROUTE POST POUR IMPORTATION DIRECTE DE PHOTO
-app.post("/admin/galerie/upload", requireAdmin, upload.single("photo"), async (req, res) => {
+// ROUTE D'UPLOAD DIRECT DE PHOTO EN BASE64
+app.post("/admin/galerie/upload", requireAdmin, async (req, res) => {
   try {
     const titre = String(req.body.titre || "").trim();
     const description = String(req.body.description || "").trim();
 
-    if (!req.file) {
-      return res.status(400).send("Veuillez sélectionner un fichier image.");
+    if (!req.files || !req.files.photo) {
+      return res.status(400).send("Veuillez choisir un fichier image.");
     }
 
-    const imageUrl = "/uploads/" + req.file.filename;
+    const file = req.files.photo;
+    const base64Image = `data:${file.mimetype};base64,${file.data.toString("base64")}`;
 
     await pool.query(
-      "INSERT INTO galerie (titre, description, image_url) VALUES ($1, $2, $3)",
-      [titre, description, imageUrl]
+      "INSERT INTO galerie (titre, description, image_data) VALUES ($1, $2, $3)",
+      [titre, description, base64Image]
     );
 
     res.redirect("/galerie");
   } catch (e) {
-    console.error("Erreur Upload Galerie:", e);
-    res.status(500).send("Erreur lors de l'importation de l'image.");
+    console.error("Erreur Upload:", e);
+    res.status(500).send("Erreur lors de l'envoi de l'image.");
   }
 });
 
