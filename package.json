@@ -1,15 +1,23 @@
 {
-  "name": "site-ecole",
-  "version": "1.0.0",
-  "description": "Site web scolaire - Projet Primaire",
+  "name": "lekol-sh-v2",
+  "version": "2.0.0",
+  "description": "Plateforme de gestion scolaire LEKOL S&H",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "ejs": "^3.1.9",
-    "express": "^4.19.2",
-    "pg": "^8.11.3"
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.3"
   }
 }
