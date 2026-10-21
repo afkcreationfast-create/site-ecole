@@ -217,7 +217,7 @@ function csrfField(req) {
 
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    if (req.path.startsWith('/admin/ia')) return next(); // Exclure l'API IA du CSRF classique pour simplifier le fetch JS
+    if (req.path.startsWith('/admin/ia')) return next();
     const supplied = req.body?._csrf;
     const expected = req.session?.csrfToken;
     if (!supplied || !expected || supplied.length !== expected.length ||
@@ -270,7 +270,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// SUB-PAGES : LISTE DES CLASSES ORDONNÉES POUR L'APPEL
+// SUB-PAGES : LISTE DES CLASSES POUR L'APPEL
 app.get("/admin/appel", requireAdmin, async (req, res) => {
   try {
     const todayAuto = getTodayDate();
@@ -423,7 +423,7 @@ app.get("/connexion", (req, res) => {
         <button class="full" style="margin-top:15px" type="submit">Se connecter</button>
       </form>
     </section>`;
-    res.send(layout("Connexion", content, req));
+  res.send(layout("Connexion", content, req));
 });
 
 app.post("/connexion", loginLimiter, async (req, res) => {
@@ -468,7 +468,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN AVEC ASSISTANT IA (QWEN)
+// PANNEAU ADMIN AVEC ASSISTANT IA QWEN
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -485,7 +485,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
       </div>
 
-      <!-- SECTION ASSISTANT IA QWEN -->
+      <!-- MODULE ASSISTANT IA QWEN -->
       <div class="card" style="border: 2px solid var(--blue);">
         <h2>🤖 Assistant IA de Direction (Qwen)</h2>
         <p style="color:var(--muted); margin-bottom: 12px;">Donne un ordre en langage naturel (ex: "Mets tous les élèves de Kinder A présents aujourd'hui" ou "Ajoute un congé lundi prochain").</p>
@@ -572,7 +572,6 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   }
 
   try {
-    // 1. Interroger Qwen via l'API Groq pour interpréter l'ordre en JSON structuré
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -580,7 +579,7 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "qwen-2.5-32b", // Modèle Qwen sur Groq
+        model: "qwen-2.5-32b",
         messages: [
           {
             role: "system",
@@ -605,7 +604,6 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
     const aiData = await aiResponse.json();
     const contentText = aiData.choices?.[0]?.message?.content || "";
     
-    // Nettoyer le bloc JSON renvoyé par l'IA
     const jsonMatch = contentText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.json({ message: "L'IA n'a pas pu structurer l'ordre." });
@@ -614,7 +612,6 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
     const parsed = JSON.parse(jsonMatch[0]);
     const today = getTodayDate();
 
-    // 2. Exécuter l'action dans Supabase selon l'intention de Qwen
     if (parsed.action === "presence" && parsed.classe_nom) {
       const cls = (await pool.query("SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1)", [`%${parsed.classe_nom}%`])).rows[0];
       if (cls) {
@@ -668,7 +665,6 @@ app.post("/admin/note", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur ajout note."); }
 });
 
-app.use((req, res) => res.status(404).send("Page introuvable.
 app.use((req, res) => res.status(404).send("Page introuvable."));
 
 async function start() {
@@ -682,4 +678,3 @@ async function start() {
 }
 
 start();
-
