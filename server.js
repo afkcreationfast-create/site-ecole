@@ -565,7 +565,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API QWEN - FORÇAGE DU MODE JSON
+// ROUTE API QWEN - VRAIE CONVERSATION NATURELLE & EXÉCUTION D'ORDRES
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
   if (!prompt) return res.json({ error: "Aucun ordre ou message fourni." });
@@ -586,29 +586,28 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
       },
       body: JSON.stringify({
         model: "qwen-2.5-32b",
-        response_format: { type: "json_object" }, // Force Groq à renvoyer du JSON pur sans texte explicatif
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `Tu es Qwen, l'assistant intelligent de la direction de l'école LEKOL S&H en Haïti.
-            
-Liste des classes disponibles dans la base de données : [${classListStr}].
+            content: `Tu es Qwen, l'assistant amical, poli et très compétent de la direction de l'école LEKOL S&H en Haïti.
 
-Directives :
-1. Si l'utilisateur salue (salut, bonjour, hey...), demande de l'aide ("j'ai besoin d'aide", "que sais-tu faire ?") ou discute :
-   - Réponds de manière amicale, naturelle et polie.
-   - Propose tes services et donne des exemples de ce que tu peux faire.
+Liste des classes enregistrées dans l'école : [${classListStr}].
+
+Règles de comportement :
+1. Si l'utilisateur salue (salut, coucou, hey, bonjour), exprime de l'hésitation (hein, quoi, oui) ou demande de l'aide ("j'ai besoin d'aide", "tu fais quoi ?") :
    - Définis "action": "discussion".
+   - Rédige une réponse fluide, polie et naturelle dans "message_reponse" pour entamer ou poursuivre la conversation et expliquer tes fonctionnalités.
 
-2. Si l'utilisateur donne un ordre d'action (ex: "mets la 1ere annee A présente", "congé lundi", "publie une annonce") :
+2. Si l'utilisateur donne un ordre d'action (ex: "mets les élèves de 1ere année A présents", "ajoute un congé", "publie une annonce") :
    - Définis "action" à "presence", "evenement" ou "annonce".
-   - Mappe le nom de la classe sur l'une des classes exactes de la liste.
+   - Rédige une petite phrase enthousiaste de confirmation dans "reponse_intro" (ex: "D'accord, je m'en occupe tout de suite !").
 
-Tu dois impérativement répondre au format JSON suivant :
+Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
 {
   "action": "discussion" | "presence" | "evenement" | "annonce",
-  "message_reponse": "Ton message amical pour l'utilisateur s'il s'agit d'une salutation, d'une réponse à une question ou d'une demande d'aide",
-  "reponse_intro": "Phrase courte de confirmation si un ordre est exécuté (ex: 'D\\'accord, je m\\'en occupe tout de suite !')",
+  "message_reponse": "Ton message conversationnel complet si action=discussion",
+  "reponse_intro": "Petite phrase de confirmation avant d'exécuter l'action",
   "classe_exacte": "Nom exact de la classe si action=presence",
   "statut": "PRESENT" | "ABSENT" | "RETARD",
   "titre": "Titre si évènement ou annonce",
@@ -626,12 +625,13 @@ Tu dois impérativement répondre au format JSON suivant :
     const parsed = JSON.parse(contentText);
     const today = getTodayDate();
 
-    // 1. Cas : Conversation / Salutations / Demande d'aide
+    // 1. Conversation / Salutations / Questions d'aide
     if (parsed.action === "discussion" || parsed.message_reponse) {
-      return res.json({ message: parsed.message_reponse || "Bonjour ! Je suis Qwen, l'assistant de la direction. Comment puis-je vous aider ?" });
+      const defaultReply = "Bonjour ! Je suis Qwen, votre assistant de direction. Je peux faire l'appel pour une classe, enregistrer des congés au calendrier ou publier des annonces sur le site. Que souhaitez-vous faire ?";
+      return res.json({ message: parsed.message_reponse || defaultReply });
     }
 
-    // 2. Cas : Prise d'appel par l'IA
+    // 2. Prise d'Appel
     if (parsed.action === "presence") {
       const classNameReq = parsed.classe_exacte || "";
 
@@ -644,7 +644,7 @@ Tu dois impérativement répondre au format JSON suivant :
         const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
         
         if (students.rows.length === 0) {
-          return res.json({ message: `${parsed.reponse_intro || 'D\'accord !'} Cependant, il n'y a encore aucun élève inscrit dans la classe **${cls.nom}**.` });
+          return res.json({ message: `${parsed.reponse_intro || 'Entendu !'} Cependant, aucun élève n'est inscrit en **${cls.nom}** pour le moment.` });
         }
 
         for (const s of students.rows) {
@@ -652,34 +652,34 @@ Tu dois impérativement répondre au format JSON suivant :
           await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
         }
 
-        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "D'accord, c'est fait ! ";
+        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
         return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
       } else {
-        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Précisez par exemple : 'Mets les élèves de 1ère Année A présents'." });
+        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Merci de préciser la classe (ex: Kinder A, 1ère Année A, etc.)." });
       }
     }
 
-    // 3. Cas : Ajouter un Congé / Calendrier
+    // 3. Calendrier / Événement
     if (parsed.action === "evenement") {
       await pool.query(
         "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
         [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
       );
       const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Très bien ! ";
-      return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier scolaire.` });
+      return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a bien été ajouté au calendrier.` });
     }
 
-    // 4. Cas : Publier une Annonce
+    // 4. Publication d'Annonce
     if (parsed.action === "annonce") {
       await pool.query(
         "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
         [parsed.titre || "Annonce Officielle", prompt]
       );
-      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est noté ! ";
-      return res.json({ message: `🤖 ${intro}Votre annonce a été publiée sur la page d'accueil.` });
+      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Parfait ! ";
+      return res.json({ message: `🤖 ${intro}L'annonce officielle a été publiée sur le site.` });
     }
 
-    res.json({ message: parsed.message_reponse || "Ordre reçu !" });
+    res.json({ message: parsed.message_reponse || "Avez-vous une autre demande pour la direction ?" });
 
   } catch (e) {
     console.error("Erreur Qwen:", e);
