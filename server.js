@@ -237,8 +237,8 @@ app.use((req, res, next) => {
 app.get("/", async (req, res) => {
   try {
     const [annonces, evts] = await Promise.all([
-      pool.query("SELECT titre,contenu,date_publication FROM annonces ORDER BY date_publication DESC LIMIT 5"),
-      pool.query("SELECT titre,date_evenement,type_evt FROM evenements WHERE date_evenement >= CURRENT_DATE ORDER BY date_evenement ASC LIMIT 5")
+      pool.query("SELECT titre,contenu,date_publication FROM annonces ORDER BY date_publication DESC LIMIT 5").catch(() => ({ rows: [] })),
+      pool.query("SELECT titre,date_evenement,type_evt FROM evenements WHERE date_evenement >= CURRENT_DATE ORDER BY date_evenement ASC LIMIT 5").catch(() => ({ rows: [] }))
     ]);
 
     const content = `
@@ -255,7 +255,7 @@ app.get("/", async (req, res) => {
               <strong style="display:block;color:var(--navy);font-size:1rem">${h(a.titre)}</strong>
               <p style="margin:4px 0">${h(a.contenu)}</p>
               <small style="color:var(--muted)">${dateFr(a.date_publication)}</small>
-            </div>`).join("") || "<p class='muted'>Aucune annonce.</p>"}
+            </div>`).join("") || "<p class='muted'>Aucune annonce publique pour le moment.</p>"}
         </section>
 
         <section class="card">
@@ -266,8 +266,8 @@ app.get("/", async (req, res) => {
                 <strong>${h(e.titre)}</strong><br>
                 <small style="color:var(--muted)">${dateFr(e.date_evenement)}</small>
               </div>
-              <span class="badge ${e.type_evt}">${h(e.type_evt)}</span>
-            </div>`).join("") || "<p class='muted'>Aucun événement prévu.</p>"}
+              <span class="badge ${h(e.type_evt)}">${h(e.type_evt)}</span>
+            </div>`).join("") || "<p class='muted'>Aucun événement programmé.</p>"}
         </section>
       </div>`;
 
@@ -278,7 +278,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// ROUTE CALENDRIER (SÉCURISÉE SANS ERREUR)
+// ROUTE CALENDRIER
 app.get("/calendrier", async (req, res) => {
   try {
     const evts = await pool.query("SELECT titre, date_evenement, type_evt, description FROM evenements ORDER BY date_evenement ASC");
@@ -303,21 +303,21 @@ app.get("/calendrier", async (req, res) => {
     res.send(layout("Calendrier Scolaire", content, req));
   } catch (e) {
     console.error("Erreur calendrier:", e);
-    res.status(500).send(layout("Erreur", "<section class='card'><h2>Erreur calendrier</h2><p>Exécutez le script SQL dans Supabase.</p></section>", req));
+    res.status(500).send(layout("Erreur", "<section class='card'><h2>Erreur calendrier</h2><p>Assurez-vous d'exécuter le script SQL dans Supabase.</p></section>", req));
   }
 });
 
-// ROUTE GALERIE (SÉCURISÉE ET STOCKÉE EN BASE64)
+// ROUTE GALERIE
 app.get("/galerie", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT id, titre, description, image_data FROM galerie ORDER BY id DESC");
+    const { rows } = await pool.query("SELECT id, titre, description, COALESCE(image_data, image_url) AS img FROM galerie ORDER BY id DESC");
     const content = `
       <section class="card">
         <h2>📸 Galerie Photos — LEKOL S&amp;H</h2>
         <div class="grid" style="margin-top:15px">
           ${rows.map(g => `
             <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff">
-              <img src="${g.image_data}" alt="${h(g.titre)}" style="width:100%;height:200px;object-fit:cover">
+              <img src="${g.img}" alt="${h(g.titre)}" style="width:100%;height:200px;object-fit:cover">
               <div style="padding:14px">
                 <strong style="color:var(--navy);display:block">${h(g.titre)}</strong>
                 <small style="color:var(--muted)">${h(g.description || "")}</small>
@@ -373,13 +373,13 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   try {
     const student = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [id])).rows[0];
     const [notes, devoirs] = await Promise.all([
-      pool.query("SELECT matiere, note, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]),
-      student.classe_id ? pool.query("SELECT matiere, description, date_pour FROM devoirs WHERE classe_id=$1 ORDER BY date_pour ASC", [student.classe_id]) : Promise.resolve({ rows: [] })
+      pool.query("SELECT matiere, note, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]).catch(() => ({ rows: [] })),
+      student.classe_id ? pool.query("SELECT matiere, description, date_pour FROM devoirs WHERE classe_id=$1 ORDER BY date_pour ASC", [student.classe_id]).catch(() => ({ rows: [] })) : Promise.resolve({ rows: [] })
     ]);
 
     const content = `
       <section class="card">
-        <h2>👋 Espace Élève — ${h(student.prenom)} ${h(student.nom)}</h2>
+        <h2>👋 Espace Élève — ${h(student.prenom)}${h(student.nom)}</h2>
         <p>Code Unique : <b style="color:var(--blue)">${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
       </section>
 
@@ -388,7 +388,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
           <h2>📊 Mes Notes &amp; Évaluations</h2>
           <div class="tablewrap"><table>
             <thead><tr><th>Matière</th><th>Note</th><th>Période</th></tr></thead>
-            <tbody>${notes.rows.map(n => `<tr><td><b>${h(n.matiere)}</b></td><td><strong style="color:var(--blue)">${h(n.note)} / 100</strong></td><td>${h(n.periode)}</td></tr>`).join("") || "<tr><td colspan='3'>Aucune note.</td></tr>"}</tbody>
+            <tbody>${notes.rows.map(n => `<tr><td><b>${h(n.matiere)}</b></td><td><strong style="color:var(--blue)">${h(n.note)} / 100</strong></td><td>${h(n.periode)}</td></tr>`).join("") || "<tr><td colspan='3'>Aucune note enregistrée.</td></tr>"}</tbody>
           </table></div>
         </section>
 
@@ -407,13 +407,13 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   }
 });
 
-// ADMIN AVEC UPLOAD PHOTO EN BASE64
+// ROUTE ADMIN SÉCURISÉE
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students, photos] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY nom"),
-      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC"),
-      pool.query("SELECT id, titre, image_data FROM galerie ORDER BY id DESC LIMIT 10")
+      pool.query("SELECT id, nom FROM classes ORDER BY nom").catch(() => ({ rows: [] })),
+      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] })),
+      pool.query("SELECT id, titre, COALESCE(image_data, image_url) AS img FROM galerie ORDER BY id DESC LIMIT 10").catch(() => ({ rows: [] }))
     ]);
 
     const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
@@ -468,133 +468,4 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <section class="card">
           <h2>🖼️ Photos Publiées Récentes</h2>
           <div class="tablewrap"><table>
-            <thead><tr><th>Aperçu</th><th>Titre</th><th>Action</th></tr></thead>
-            <tbody>
-              ${photos.rows.map(p => `
-                <tr>
-                  <td><img src="${p.image_data}" style="width:50px;height:50px;object-fit:cover;border-radius:6px"></td>
-                  <td><b>${h(p.titre)}</b></td>
-                  <td>
-                    <form method="post" action="/admin/galerie/supprimer/${p.id}">
-                      ${csrfField(req)}
-                      <button class="btn danger" style="padding:4px 8px;font-size:.8rem" type="submit">Supprimer</button>
-                    </form>
-                  </td>
-                </tr>
-              `).join("") || "<tr><td colspan='3'>Aucune photo.</td></tr>"}
-            </tbody>
-          </table></div>
-        </section>
-      </div>`;
-
-    res.send(layout("Administration", content, req));
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("Erreur administration.");
-  }
-});
-
-// ROUTE D'UPLOAD DIRECT DE PHOTO EN BASE64
-app.post("/admin/galerie/upload", requireAdmin, async (req, res) => {
-  try {
-    const titre = String(req.body.titre || "").trim();
-    const description = String(req.body.description || "").trim();
-
-    if (!req.files || !req.files.photo) {
-      return res.status(400).send("Veuillez choisir un fichier image.");
-    }
-
-    const file = req.files.photo;
-    const base64Image = `data:${file.mimetype};base64,${file.data.toString("base64")}`;
-
-    await pool.query(
-      "INSERT INTO galerie (titre, description, image_data) VALUES ($1, $2, $3)",
-      [titre, description, base64Image]
-    );
-
-    res.redirect("/galerie");
-  } catch (e) {
-    console.error("Erreur Upload:", e);
-    res.status(500).send("Erreur lors de l'envoi de l'image.");
-  }
-});
-
-app.post("/admin/galerie/supprimer/:id", requireAdmin, async (req, res) => {
-  try {
-    await pool.query("DELETE FROM galerie WHERE id=$1", [Number(req.params.id)]);
-    res.redirect("/admin");
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("Erreur suppression photo.");
-  }
-});
-
-app.post("/admin/eleve", requireAdmin, async (req, res) => {
-  const { nom, prenom, password, classe_id } = req.body;
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    const code = "S&H-" + crypto.randomInt(1000, 10000);
-    await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
-    res.redirect("/admin");
-  } catch (e) { console.error(e); res.status(500).send("Erreur ajout élève."); }
-});
-
-app.post("/admin/note", requireAdmin, async (req, res) => {
-  const { eleve_id, matiere, note, periode } = req.body;
-  try {
-    await pool.query("INSERT INTO notes (eleve_id, matiere, note, periode) VALUES ($1,$2,$3,$4)", [Number(eleve_id), String(matiere).trim(), Number(note), String(periode).trim()]);
-    res.redirect("/admin");
-  } catch (e) { console.error(e); res.status(500).send("Erreur ajout note."); }
-});
-
-app.get("/admin/appel", requireAdmin, async (req, res) => {
-  const classeId = Number(req.query.classe_id);
-  const dateAppel = String(req.query.date || today());
-  try {
-    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY nom");
-    const classOpts = classes.rows.map(c => `<option value="${c.id}" ${c.id === classeId ? "selected" : ""}>${h(c.nom)}</option>`).join("");
-    let studentRows = "";
-    if (classeId) {
-      const students = await pool.query("SELECT id, nom, prenom FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom", [classeId]);
-      studentRows = students.rows.map(s => `<tr><td><b>${h(s.nom)} ${h(s.prenom)}</b></td><td>
-        <label style="margin-right:10px"><input type="radio" name="statut_${s.id}" value="PRESENT" checked> Présent</label>
-        <label style="margin-right:10px"><input type="radio" name="statut_${s.id}" value="ABSENT"> Absent</label>
-        <label><input type="radio" name="statut_${s.id}" value="RETARD"> Retard</label>
-      </td></tr>`).join("");
-    }
-    const content = `<section class="card"><h2>📝 Appel par Classe</h2>
-      <form method="get" action="/admin/appel">
-        <select name="classe_id" onchange="this.form.submit()"><option value="">Sélectionner une classe</option>${classOpts}</select>
-      </form>
-      ${classeId ? `<form method="post" action="/admin/appel/valider">${csrfField(req)}<input type="hidden" name="classe_id" value="${classeId}"><input type="hidden" name="date_presence" value="${dateAppel}"><table>${studentRows}</table><button style="margin-top:10px" type="submit">Enregistrer l'Appel</button></form>` : ""}
-    </section>`;
-    res.send(layout("Prise d'Appel", content, req));
-  } catch (e) { console.error(e); res.status(500).send("Erreur appel."); }
-});
-
-app.post("/admin/appel/valider", requireAdmin, async (req, res) => {
-  const { classe_id, date_presence } = req.body;
-  try {
-    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
-    for (const s of students.rows) {
-      const statut = req.body[`statut_${s.id}`] || "PRESENT";
-      await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, date_presence]);
-      await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, statut, date_presence]);
-    }
-    res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date_presence}`);
-  } catch (e) { console.error(e); res.status(500).send("Erreur validation appel."); }
-});
-
-app.use((req, res) => res.status(404).send("Page introuvable."));
-
-async function start() {
-  try {
-    await pool.query("SELECT 1");
-    app.listen(port, () => console.log(`🚀 LEKOL S&H en ligne sur le port ${port}`));
-  } catch (e) {
-    console.error("❌ Erreur PG:", e.message);
-    process.exit(1);
-  }
-}
-
-start();
+            <thead><tr><th>Aperçu
