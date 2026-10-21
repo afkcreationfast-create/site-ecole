@@ -468,7 +468,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN AVEC ASSISTANT IA QWEN CONVERSATIONNEL
+// PANNEAU ADMIN AVEC ASSISTANT IA QWEN INTERACTIF
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -485,7 +485,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
       </div>
 
-      <!-- MODULE ASSISTANT IA QWEN INTERACTIF -->
+      <!-- MODULE ASSISTANT IA QWEN -->
       <div class="card" style="border: 2px solid var(--blue);">
         <h2>🤖 Assistant IA de Direction (Qwen)</h2>
         <p style="color:var(--muted); margin-bottom: 12px;">Discutez naturellement ou donnez un ordre (ex: "Salut", "Aide-moi", "Hey AI, mets les élèves de Kinder A présents").</p>
@@ -565,17 +565,16 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API QWEN - INTELLIGENTE ET CONVERSATIONNELLE
+// ROUTE API QWEN - FORÇAGE DU MODE JSON
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
-  if (!prompt) return res.json({ error: "Aucun ordre fourni." });
+  if (!prompt) return res.json({ error: "Aucun ordre ou message fourni." });
 
   if (!process.env.GROQ_API_KEY) {
     return res.json({ error: "Clé GROQ_API_KEY non configurée sur Render." });
   }
 
   try {
-    // 1. Charger la liste réelle des classes pour aider Qwen à faire la bonne correspondance
     const dbClasses = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     const classListStr = dbClasses.rows.map(c => `"${c.nom}"`).join(", ");
 
@@ -587,61 +586,55 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
       },
       body: JSON.stringify({
         model: "qwen-2.5-32b",
+        response_format: { type: "json_object" }, // Force Groq à renvoyer du JSON pur sans texte explicatif
         messages: [
           {
             role: "system",
-            content: `Tu es Qwen, l'assistant IA amical et efficace de la direction de l'école LEKOL S&H en Haïti.
+            content: `Tu es Qwen, l'assistant intelligent de la direction de l'école LEKOL S&H en Haïti.
             
-Liste exacte des classes enregistrées dans l'école : [${classListStr}].
+Liste des classes disponibles dans la base de données : [${classListStr}].
 
-Ta mission :
-1. Si l'utilisateur salue (salut, bonjour, hey...), discute ou demande de l'aide ("aide-moi", "que peux-tu faire ?") : Réponds de manière chaleureuse, amicale et professionnelle en expliquant tes capacités. Définis "action": "discussion".
-2. Si l'utilisateur donne un ordre d'action (prise d'appel, congé, annonce) :
-   - Extrais l'action correspondante.
-   - Si la classe mentionnée est "1er annee a", "1ere annee A", "1ere A", mappe-la exactement sur "${dbClasses.rows[2]?.nom || '1ère Année A'}".
-   - Mappe toujours avec le nom exact de la classe parmi la liste fournie.
+Directives :
+1. Si l'utilisateur salue (salut, bonjour, hey...), demande de l'aide ("j'ai besoin d'aide", "que sais-tu faire ?") ou discute :
+   - Réponds de manière amicale, naturelle et polie.
+   - Propose tes services et donne des exemples de ce que tu peux faire.
+   - Définis "action": "discussion".
 
-Réponds TOUJOURS au format JSON strict sans aucune balise Markdown autour :
+2. Si l'utilisateur donne un ordre d'action (ex: "mets la 1ere annee A présente", "congé lundi", "publie une annonce") :
+   - Définis "action" à "presence", "evenement" ou "annonce".
+   - Mappe le nom de la classe sur l'une des classes exactes de la liste.
+
+Tu dois impérativement répondre au format JSON suivant :
 {
-  "action": "presence" | "evenement" | "annonce" | "discussion",
-  "classe_exacte": "nom exact de la classe parmi la liste donnée (ou null)",
+  "action": "discussion" | "presence" | "evenement" | "annonce",
+  "message_reponse": "Ton message amical pour l'utilisateur s'il s'agit d'une salutation, d'une réponse à une question ou d'une demande d'aide",
+  "reponse_intro": "Phrase courte de confirmation si un ordre est exécuté (ex: 'D\\'accord, je m\\'en occupe tout de suite !')",
+  "classe_exacte": "Nom exact de la classe si action=presence",
   "statut": "PRESENT" | "ABSENT" | "RETARD",
-  "titre": "titre si événement ou annonce",
-  "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT",
-  "reponse_intro": "Phrase naturelle de l'IA (ex: 'D'accord, je m'en occupe tout de suite !')",
-  "message_discussion": "Ta réponse amicale si c'est une discussion ou une demande d'aide"
+  "titre": "Titre si évènement ou annonce",
+  "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT"
 }`
           },
           { role: "user", content: prompt }
         ],
-        temperature: 0.2
+        temperature: 0.3
       })
     });
 
     const aiData = await aiResponse.json();
-    let contentText = aiData.choices?.[0]?.message?.content || "";
-
-    // Nettoyage Markdown
-    contentText = contentText.replace(/```json/gi, "").replace(/```/g, "").trim();
-
-    const jsonMatch = contentText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return res.json({ message: "Bonjour ! Je suis Qwen. Vous pouvez me demander de faire l'appel (ex: 'Mets les élèves de 1ère Année A présents'), d'ajouter un congé ou de publier une annonce !" });
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    const contentText = aiData.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(contentText);
     const today = getTodayDate();
 
-    // Cas 1 : Discussion ou Salutation ou Demande d'aide
-    if (parsed.action === "discussion" || parsed.message_discussion) {
-      return res.json({ message: parsed.message_discussion || parsed.reponse_intro || "Bonjour ! Comment puis-je vous aider aujourd'hui ?" });
+    // 1. Cas : Conversation / Salutations / Demande d'aide
+    if (parsed.action === "discussion" || parsed.message_reponse) {
+      return res.json({ message: parsed.message_reponse || "Bonjour ! Je suis Qwen, l'assistant de la direction. Comment puis-je vous aider ?" });
     }
 
-    // Cas 2 : Prise d'Appel
+    // 2. Cas : Prise d'appel par l'IA
     if (parsed.action === "presence") {
       const classNameReq = parsed.classe_exacte || "";
 
-      // Recherche flexible du nom de la classe
       const cls = (await pool.query(
         "SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1) OR lower(nom) LIKE lower($2) LIMIT 1",
         [`%${classNameReq}%`, `%${prompt}%`]
@@ -651,7 +644,7 @@ Réponds TOUJOURS au format JSON strict sans aucune balise Markdown autour :
         const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
         
         if (students.rows.length === 0) {
-          return res.json({ message: `${parsed.reponse_intro || 'D\'accord !'} Cependant, il n'y a encore aucun élève inscrit dans la classe ${cls.nom}.` });
+          return res.json({ message: `${parsed.reponse_intro || 'D\'accord !'} Cependant, il n'y a encore aucun élève inscrit dans la classe **${cls.nom}**.` });
         }
 
         for (const s of students.rows) {
@@ -659,38 +652,38 @@ Réponds TOUJOURS au format JSON strict sans aucune balise Markdown autour :
           await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
         }
 
-        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
+        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "D'accord, c'est fait ! ";
         return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
       } else {
-        return res.json({ message: `⚠️ Oups, je n'ai pas trouvé la classe spécifiée. Veuillez préciser la classe (ex: Kinder A, 1ère Année A, etc.).` });
+        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Précisez par exemple : 'Mets les élèves de 1ère Année A présents'." });
       }
     }
 
-    // Cas 3 : Congé / Calendrier
+    // 3. Cas : Ajouter un Congé / Calendrier
     if (parsed.action === "evenement") {
       await pool.query(
         "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
         [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
       );
-      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
+      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Très bien ! ";
       return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier scolaire.` });
     }
 
-    // Cas 4 : Annonce
+    // 4. Cas : Publier une Annonce
     if (parsed.action === "annonce") {
       await pool.query(
         "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
         [parsed.titre || "Annonce Officielle", prompt]
       );
-      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Parfait ! ";
-      return res.json({ message: `🤖 ${intro}Votre annonce a été publiée sur la page d'accueil du site.` });
+      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est noté ! ";
+      return res.json({ message: `🤖 ${intro}Votre annonce a été publiée sur la page d'accueil.` });
     }
 
-    res.json({ message: parsed.reponse_intro || "Ordre bien reçu !" });
+    res.json({ message: parsed.message_reponse || "Ordre reçu !" });
 
   } catch (e) {
     console.error("Erreur Qwen:", e);
-    res.json({ error: "Désolé, une petite erreur est survenue lors de l'exécution." });
+    res.json({ error: "Une erreur est survenue lors de l'exécution de votre demande." });
   }
 });
 
