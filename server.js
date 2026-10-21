@@ -468,7 +468,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN AVEC ASSISTANT IA QWEN
+// PANNEAU ADMIN AVEC ASSISTANT IA QWEN CONVERSATIONNEL
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -485,18 +485,20 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
       </div>
 
-      <!-- MODULE ASSISTANT IA QWEN -->
+      <!-- MODULE ASSISTANT IA QWEN INTERACTIF -->
       <div class="card" style="border: 2px solid var(--blue);">
         <h2>🤖 Assistant IA de Direction (Qwen)</h2>
-        <p style="color:var(--muted); margin-bottom: 12px;">Donne un ordre en langage naturel (ex: "Mets tous les élèves de Kinder A présents aujourd'hui" ou "Ajoute un congé lundi prochain").</p>
+        <p style="color:var(--muted); margin-bottom: 12px;">Discutez naturellement ou donnez un ordre (ex: "Salut", "Aide-moi", "Hey AI, mets les élèves de Kinder A présents").</p>
         
-        <div id="aiChatBox" style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; height:200px; padding:12px; overflow-y:auto; margin-bottom:12px; font-size:.9rem;">
-          <div style="color:var(--muted); margin-bottom:8px;">🤖 <b>Qwen IA :</b> Prêt à exécuter vos ordres d'administration. Que souhaitez-vous faire ?</div>
+        <div id="aiChatBox" style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; height:240px; padding:12px; overflow-y:auto; margin-bottom:12px; font-size:.9rem; display:flex; flex-direction:column; gap:8px;">
+          <div style="color:var(--navy); background:#e2e8f0; padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">
+            🤖 <b>Qwen IA :</b> Bonjour ! Je suis l'assistant officiel de la direction. Comment puis-je vous aider aujourd'hui ?
+          </div>
         </div>
 
         <div style="display:flex; gap:10px;">
-          <input type="text" id="aiPromptInput" placeholder="Ex: Mets tous les élèves de Kinder A présents..." style="flex:1;">
-          <button type="button" id="aiSendBtn" class="btn">Envoyer l'Ordre</button>
+          <input type="text" id="aiPromptInput" placeholder="Écrivez votre message ou ordre..." style="flex:1;" onkeypress="if(event.key==='Enter') document.getElementById('aiSendBtn').click()">
+          <button type="button" id="aiSendBtn" class="btn">Envoyer</button>
         </div>
       </div>
 
@@ -507,7 +509,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
           const prompt = input.value.trim();
           if(!prompt) return;
 
-          chatBox.innerHTML += \`<div style="margin-bottom:8px; text-align:right;">🧑‍💼 <b>Vous :</b> \${prompt}</div>\`;
+          chatBox.innerHTML += \`<div style="background:#2563eb; color:#fff; padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-end;">🧑‍💼 <b>Vous :</b> \${prompt}</div>\`;
           input.value = '';
           chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -518,9 +520,10 @@ app.get("/admin", requireAdmin, async (req, res) => {
               body: JSON.stringify({ prompt })
             });
             const data = await res.json();
-            chatBox.innerHTML += \`<div style="margin-bottom:8px; color:var(--success);">🤖 <b>Qwen IA :</b> \${data.message || data.error}</div>\`;
+            const responseMsg = data.message || data.error || "Ordre exécuté avec succès.";
+            chatBox.innerHTML += \`<div style="background:#e2e8f0; color:var(--navy); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Qwen IA :</b> \${responseMsg}</div>\`;
           } catch(err) {
-            chatBox.innerHTML += \`<div style="margin-bottom:8px; color:var(--danger);">🤖 <b>Qwen IA :</b> Erreur de communication avec le serveur.</div>\`;
+            chatBox.innerHTML += \`<div style="background:#fee2e2; color:var(--danger); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Qwen IA :</b> Désolé, une erreur réseau est survenue.</div>\`;
           }
           chatBox.scrollTop = chatBox.scrollHeight;
         });
@@ -562,7 +565,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API DE L'ASSISTANT IA (QWEN VIA GROQ) - CORRIGÉE ET ROBUSTE
+// ROUTE API QWEN - INTELLIGENTE ET CONVERSATIONNELLE
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
   if (!prompt) return res.json({ error: "Aucun ordre fourni." });
@@ -572,6 +575,10 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   }
 
   try {
+    // 1. Charger la liste réelle des classes pour aider Qwen à faire la bonne correspondance
+    const dbClasses = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
+    const classListStr = dbClasses.rows.map(c => `"${c.nom}"`).join(", ");
+
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -583,86 +590,107 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `Tu es l'assistant IA de la direction de l'école LEKOL S&H en Haiti. Analyse l'ordre de l'administrateur et réponds TOUJOURS au format JSON strict sans balises markdown ni texte autour.
+            content: `Tu es Qwen, l'assistant IA amical et efficace de la direction de l'école LEKOL S&H en Haïti.
+            
+Liste exacte des classes enregistrées dans l'école : [${classListStr}].
 
-Format JSON attendu :
+Ta mission :
+1. Si l'utilisateur salue (salut, bonjour, hey...), discute ou demande de l'aide ("aide-moi", "que peux-tu faire ?") : Réponds de manière chaleureuse, amicale et professionnelle en expliquant tes capacités. Définis "action": "discussion".
+2. Si l'utilisateur donne un ordre d'action (prise d'appel, congé, annonce) :
+   - Extrais l'action correspondante.
+   - Si la classe mentionnée est "1er annee a", "1ere annee A", "1ere A", mappe-la exactement sur "${dbClasses.rows[2]?.nom || '1ère Année A'}".
+   - Mappe toujours avec le nom exact de la classe parmi la liste fournie.
+
+Réponds TOUJOURS au format JSON strict sans aucune balise Markdown autour :
 {
   "action": "presence" | "evenement" | "annonce" | "discussion",
-  "classe_nom": "nom de la classe si précisé (ex: Kinder A) ou 'toutes'",
+  "classe_exacte": "nom exact de la classe parmi la liste donnée (ou null)",
   "statut": "PRESENT" | "ABSENT" | "RETARD",
-  "titre": "titre de l'événement ou annonce",
-  "date": "YYYY-MM-DD",
+  "titre": "titre si événement ou annonce",
   "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT",
-  "description": "contenu du message ou de l'annonce",
-  "message_reponse": "Ton message de réponse amical à la direction"
+  "reponse_intro": "Phrase naturelle de l'IA (ex: 'D'accord, je m'en occupe tout de suite !')",
+  "message_discussion": "Ta réponse amicale si c'est une discussion ou une demande d'aide"
 }`
           },
           { role: "user", content: prompt }
         ],
-        temperature: 0.1
+        temperature: 0.2
       })
     });
 
     const aiData = await aiResponse.json();
     let contentText = aiData.choices?.[0]?.message?.content || "";
 
-    // Nettoyage des balises Markdown ```json ... ``` ajoutées par Qwen
+    // Nettoyage Markdown
     contentText = contentText.replace(/```json/gi, "").replace(/```/g, "").trim();
 
     const jsonMatch = contentText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return res.json({ message: "Désolé, je n'ai pas compris cette commande. Exemple d'ordre : 'Mets tous les élèves de Kinder A présents'." });
+      return res.json({ message: "Bonjour ! Je suis Qwen. Vous pouvez me demander de faire l'appel (ex: 'Mets les élèves de 1ère Année A présents'), d'ajouter un congé ou de publier une annonce !" });
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
     const today = getTodayDate();
 
-    // 1. Action : Prise d'Appel / Présences
+    // Cas 1 : Discussion ou Salutation ou Demande d'aide
+    if (parsed.action === "discussion" || parsed.message_discussion) {
+      return res.json({ message: parsed.message_discussion || parsed.reponse_intro || "Bonjour ! Comment puis-je vous aider aujourd'hui ?" });
+    }
+
+    // Cas 2 : Prise d'Appel
     if (parsed.action === "presence") {
-      const targetClasse = String(parsed.classe_nom || "").trim();
+      const classNameReq = parsed.classe_exacte || "";
 
-      if (!targetClasse || targetClasse === "toutes" || targetClasse === "null") {
-        return res.json({ message: "Veuillez préciser la classe. Exemple : 'Mets tous les élèves de Kinder A absents'." });
-      }
+      // Recherche flexible du nom de la classe
+      const cls = (await pool.query(
+        "SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1) OR lower(nom) LIKE lower($2) LIMIT 1",
+        [`%${classNameReq}%`, `%${prompt}%`]
+      )).rows[0];
 
-      const cls = (await pool.query("SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1)", [`%${targetClasse}%`])).rows[0];
       if (cls) {
         const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
+        
         if (students.rows.length === 0) {
-          return res.json({ message: `Aucun élève inscrit en ${cls.nom} pour le moment.` });
+          return res.json({ message: `${parsed.reponse_intro || 'D\'accord !'} Cependant, il n'y a encore aucun élève inscrit dans la classe ${cls.nom}.` });
         }
+
         for (const s of students.rows) {
           await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
           await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
         }
-        return res.json({ message: `✅ Ordre exécuté ! Tous les élèves de ${cls.nom} sont marqués : ${parsed.statut || "PRESENT"}.` });
+
+        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
+        return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
       } else {
-        return res.json({ message: `⚠️ La classe "${targetClasse}" n'a pas été trouvée.` });
+        return res.json({ message: `⚠️ Oups, je n'ai pas trouvé la classe spécifiée. Veuillez préciser la classe (ex: Kinder A, 1ère Année A, etc.).` });
       }
-    } 
-    // 2. Action : Ajouter un Congé / Événement
-    else if (parsed.action === "evenement") {
+    }
+
+    // Cas 3 : Congé / Calendrier
+    if (parsed.action === "evenement") {
       await pool.query(
         "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
-        [parsed.titre || "Événement Direction", parsed.date || today, parsed.type_evt || "CONGÉ", parsed.description || prompt]
+        [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
       );
-      return res.json({ message: `✅ Fait ! L'événement "${parsed.titre || "Congé"}" a été ajouté au calendrier.` });
+      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
+      return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier scolaire.` });
     }
-    // 3. Action : Publier une Annonce
-    else if (parsed.action === "annonce") {
+
+    // Cas 4 : Annonce
+    if (parsed.action === "annonce") {
       await pool.query(
         "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
-        [parsed.titre || "Annonce de la Direction", parsed.description || prompt]
+        [parsed.titre || "Annonce Officielle", prompt]
       );
-      return res.json({ message: `✅ Annonce officielle publiée sur la page d'accueil !` });
+      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Parfait ! ";
+      return res.json({ message: `🤖 ${intro}Votre annonce a été publiée sur la page d'accueil du site.` });
     }
 
-    // 4. Discussion générale
-    res.json({ message: parsed.message_reponse || "Bonjour ! Que puis-je faire pour la direction aujourd'hui ?" });
+    res.json({ message: parsed.reponse_intro || "Ordre bien reçu !" });
 
   } catch (e) {
-    console.error("Erreur IA Qwen:", e);
-    res.json({ error: "Une erreur est survenue lors du traitement de la commande." });
+    console.error("Erreur Qwen:", e);
+    res.json({ error: "Désolé, une petite erreur est survenue lors de l'exécution." });
   }
 });
 
