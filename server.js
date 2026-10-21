@@ -6,7 +6,6 @@ const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
-const fileUpload = require("express-fileupload");
 require("dotenv").config();
 
 const app = express();
@@ -31,9 +30,8 @@ pool.on("error", err => console.error("Erreur PostgreSQL:", err.message));
 app.disable("x-powered-by");
 if (isProduction) app.set("trust proxy", 1);
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.urlencoded({ extended: false, limit: "10mb" }));
-app.use(express.json({ limit: "10mb" }));
-app.use(fileUpload({ limits: { fileSize: 5 * 1024 * 1024 } }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+app.use(express.json({ limit: "20mb" }));
 
 app.use(session({
   store: new PgSession({
@@ -144,9 +142,6 @@ table { border-collapse: collapse; width: 100%; background: #fff; font-size: .92
 th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 13px; }
 th { background: #f8fafc; color: #475569; font-weight: 700; }
 .badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
-.badge.success { background: #dcfce7; color: #15803d; }
-.badge.danger { background: #fee2e2; color: #b91c1c; }
-.badge.warning { background: #fef3c7; color: #b45309; }
 .badge.FÉRIÉ { background: #fee2e2; color: #b91c1c; }
 .badge.CONGÉ { background: #fef3c7; color: #b45309; }
 .badge.EXAMEN { background: #e0e7ff; color: #3730a3; }
@@ -220,9 +215,6 @@ function csrfField(req) {
 
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    if (req.headers["content-type"] && req.headers["content-type"].includes("multipart/form-data")) {
-      return next();
-    }
     const supplied = req.body?._csrf;
     const expected = req.session?.csrfToken;
     if (!supplied || !expected || supplied.length !== expected.length ||
@@ -303,7 +295,7 @@ app.get("/calendrier", async (req, res) => {
     res.send(layout("Calendrier Scolaire", content, req));
   } catch (e) {
     console.error("Erreur calendrier:", e);
-    res.status(500).send(layout("Erreur", "<section class='card'><h2>Erreur calendrier</h2><p>Assurez-vous d'exécuter le script SQL dans Supabase.</p></section>", req));
+    res.status(500).send("Erreur calendrier.");
   }
 });
 
@@ -317,7 +309,7 @@ app.get("/galerie", async (req, res) => {
         <div class="grid" style="margin-top:15px">
           ${rows.map(g => `
             <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff">
-              <img src="${g.img}" alt="${h(g.titre)}" style="width:100%;height:200px;object-fit:cover">
+              <img src="${g.img}" alt="${h(g.titre)}" style="width:100%;height:220px;object-fit:cover">
               <div style="padding:14px">
                 <strong style="color:var(--navy);display:block">${h(g.titre)}</strong>
                 <small style="color:var(--muted)">${h(g.description || "")}</small>
@@ -379,7 +371,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 
     const content = `
       <section class="card">
-        <h2>👋 Espace Élève — ${h(student.prenom)}${h(student.nom)}</h2>
+        <h2>👋 Espace Élève — ${h(student.prenom)} ${h(student.nom)}</h2>
         <p>Code Unique : <b style="color:var(--blue)">${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
       </section>
 
@@ -407,7 +399,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   }
 });
 
-// ROUTE ADMIN SÉCURISÉE
+// PANNEAU ADMIN AVEC COMPRESSION CLIENT AUTOMATIQUE
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students, photos] = await Promise.all([
@@ -430,15 +422,61 @@ app.get("/admin", requireAdmin, async (req, res) => {
       <div class="grid">
         <section class="card">
           <h2>📤 Importer une Photo dans la Galerie</h2>
-          <form method="post" action="/admin/galerie/upload" enctype="multipart/form-data">
-            <label>Titre de l'événement / photo</label>
-            <input name="titre" required placeholder="Ex. Fête du drapeau, remise des prix...">
-            <label>Sélectionner une photo depuis votre appareil (PNG, JPG)</label>
-            <input type="file" name="photo" accept="image/*" required style="padding:8px">
-            <label>Description (facultative)</label>
-            <textarea name="description" placeholder="Courte explication..."></textarea>
-            <button style="margin-top:12px" type="submit">📷 Publier la photo sur la Galerie</button>
+          <form id="uploadForm" method="post" action="/admin/galerie/upload">
+            ${csrfField(req)}
+            <input type="hidden" name="base64" id="base64Input">
+            <label>Titre de la photo / événement</label>
+            <input name="titre" required placeholder="Ex. Activité sportive, Concours...">
+            <label>Sélectionner une image (PNG, JPG)</label>
+            <input type="file" id="filePicker" accept="image/*" required style="padding:8px">
+            <label>Description (optionnelle)</label>
+            <textarea name="description" placeholder="Petite description..."></textarea>
+            <button style="margin-top:12px" type="submit" id="submitBtn">📷 Publier sur la Galerie</button>
           </form>
+
+          <script>
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+              const fileInput = document.getElementById('filePicker');
+              const base64Input = document.getElementById('base64Input');
+              const submitBtn = document.getElementById('submitBtn');
+
+              if (!base64Input.value && fileInput.files.length > 0) {
+                e.preventDefault();
+                submitBtn.innerText = "⏳ Traitement de l'image...";
+                submitBtn.disabled = true;
+
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                  const img = new Image();
+                  img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max = 1200; // Redimensionne max 1200px pour un envoi ultra fluide
+
+                    if (width > height && width > max) {
+                      height *= max / width;
+                      width = max;
+                    } else if (height > max) {
+                      width *= max / height;
+                      height = max;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    base64Input.value = canvas.toDataURL('image/jpeg', 0.82); // Compresse en JPEG
+                    document.getElementById('uploadForm').submit();
+                  };
+                  img.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+          </script>
         </section>
 
         <section class="card">
@@ -468,4 +506,131 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <section class="card">
           <h2>🖼️ Photos Publiées Récentes</h2>
           <div class="tablewrap"><table>
-            <thead><tr><th>Aperçu
+            <thead><tr><th>Aperçu</th><th>Titre</th><th>Action</th></tr></thead>
+            <tbody>
+              ${photos.rows.map(p => `
+                <tr>
+                  <td><img src="${p.img}" style="width:50px;height:50px;object-fit:cover;border-radius:6px"></td>
+                  <td><b>${h(p.titre)}</b></td>
+                  <td>
+                    <form method="post" action="/admin/galerie/supprimer/${p.id}">
+                      ${csrfField(req)}
+                      <button class="btn danger" style="padding:4px 8px;font-size:.8rem" type="submit">Supprimer</button>
+                    </form>
+                  </td>
+                </tr>
+              `).join("") || "<tr><td colspan='3'>Aucune photo.</td></tr>"}
+            </tbody>
+          </table></div>
+        </section>
+      </div>`;
+
+    res.send(layout("Administration", content, req));
+  } catch (e) {
+    console.error("Erreur Admin Page:", e);
+    res.status(500).send("Erreur administration.");
+  }
+});
+
+// TRAITEMENT D'ENVOI DE L'IMAGE COMPRESSÉE
+app.post("/admin/galerie/upload", requireAdmin, async (req, res) => {
+  try {
+    const titre = String(req.body.titre || "").trim();
+    const description = String(req.body.description || "").trim();
+    const base64Data = String(req.body.base64 || "").trim();
+
+    if (!base64Data) {
+      return res.status(400).send("Aucune image valide reçue.");
+    }
+
+    await pool.query(
+      "INSERT INTO galerie (titre, description, image_data) VALUES ($1, $2, $3)",
+      [titre, description, base64Data]
+    );
+
+    res.redirect("/galerie");
+  } catch (e) {
+    console.error("Erreur Stockage Image:", e);
+    res.status(500).send("Erreur lors de l'envoi de l'image.");
+  }
+});
+
+app.post("/admin/galerie/supprimer/:id", requireAdmin, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM galerie WHERE id=$1", [Number(req.params.id)]);
+    res.redirect("/admin");
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Erreur suppression photo.");
+  }
+});
+
+app.post("/admin/eleve", requireAdmin, async (req, res) => {
+  const { nom, prenom, password, classe_id } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const code = "S&H-" + crypto.randomInt(1000, 10000);
+    await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
+    res.redirect("/admin");
+  } catch (e) { console.error(e); res.status(500).send("Erreur ajout élève."); }
+});
+
+app.post("/admin/note", requireAdmin, async (req, res) => {
+  const { eleve_id, matiere, note, periode } = req.body;
+  try {
+    await pool.query("INSERT INTO notes (eleve_id, matiere, note, periode) VALUES ($1,$2,$3,$4)", [Number(eleve_id), String(matiere).trim(), Number(note), String(periode).trim()]);
+    res.redirect("/admin");
+  } catch (e) { console.error(e); res.status(500).send("Erreur ajout note."); }
+});
+
+app.get("/admin/appel", requireAdmin, async (req, res) => {
+  const classeId = Number(req.query.classe_id);
+  const dateAppel = String(req.query.date || today());
+  try {
+    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY nom");
+    const classOpts = classes.rows.map(c => `<option value="${c.id}" ${c.id === classeId ? "selected" : ""}>${h(c.nom)}</option>`).join("");
+    let studentRows = "";
+    if (classeId) {
+      const students = await pool.query("SELECT id, nom, prenom FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom", [classeId]);
+      studentRows = students.rows.map(s => `<tr><td><b>${h(s.nom)} ${h(s.prenom)}</b></td><td>
+        <label style="margin-right:10px"><input type="radio" name="statut_${s.id}" value="PRESENT" checked> Présent</label>
+        <label style="margin-right:10px"><input type="radio" name="statut_${s.id}" value="ABSENT"> Absent</label>
+        <label><input type="radio" name="statut_${s.id}" value="RETARD"> Retard</label>
+      </td></tr>`).join("");
+    }
+    const content = `<section class="card"><h2>📝 Appel par Classe</h2>
+      <form method="get" action="/admin/appel">
+        <select name="classe_id" onchange="this.form.submit()"><option value="">Sélectionner une classe</option>${classOpts}</select>
+      </form>
+      ${classeId ? `<form method="post" action="/admin/appel/valider">${csrfField(req)}<input type="hidden" name="classe_id" value="${classeId}"><input type="hidden" name="date_presence" value="${dateAppel}"><table>${studentRows}</table><button style="margin-top:10px" type="submit">Enregistrer l'Appel</button></form>` : ""}
+    </section>`;
+    res.send(layout("Prise d'Appel", content, req));
+  } catch (e) { console.error(e); res.status(500).send("Erreur appel."); }
+});
+
+app.post("/admin/appel/valider", requireAdmin, async (req, res) => {
+  const { classe_id, date_presence } = req.body;
+  try {
+    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
+    for (const s of students.rows) {
+      const statut = req.body[`statut_${s.id}`] || "PRESENT";
+      await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, date_presence]);
+      await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, statut, date_presence]);
+    }
+    res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date_presence}`);
+  } catch (e) { console.error(e); res.status(500).send("Erreur validation appel."); }
+});
+
+app.use((req, res) => res.status(404).send("Page introuvable."));
+
+async function start() {
+  try {
+    await pool.query("SELECT 1");
+    app.listen(port, () => console.log(`🚀 LEKOL S&H prêt sur le port ${port}`));
+  } catch (e) {
+    console.error("❌ Erreur PG:", e.message);
+    process.exit(1);
+  }
+}
+
+start();
