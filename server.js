@@ -669,3 +669,17 @@ app.post("/admin/note", requireAdmin, async (req, res) => {
 });
 
 app.use((req, res) => res.status(404).send("Page introuvable.
+app.use((req, res) => res.status(404).send("Page introuvable."));
+
+async function start() {
+  try {
+    await pool.query("SELECT 1");
+    app.listen(port, () => console.log(`🚀 LEKOL S&H prêt sur le port ${port}`));
+  } catch (e) {
+    console.error("❌ Erreur PG:", e.message);
+    process.exit(1);
+  }
+}
+
+start();
+
