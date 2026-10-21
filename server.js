@@ -565,7 +565,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API LLAMA 3.3 VIA GROQ — ROBUSTE ET NATURELLE
+// ROUTE API LLAMA 3.3 — MODE HYBRIDE (CONVERSATION LIBRE + COMMANDES)
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
   if (!prompt) return res.json({ error: "Aucun ordre ou message fourni." });
@@ -578,12 +578,6 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
     const dbClasses = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     const classListStr = dbClasses.rows.map(c => `"${c.nom}"`).join(", ");
 
-    // Détection basique si c'est une salutation simple
-    const lowerPrompt = prompt.toLowerCase();
-    if (["salut", "bonjour", "coucou", "hey", "hello", "hein", "quoi", "ok", "oui"].includes(lowerPrompt)) {
-      return res.json({ message: "Bonjour ! Je suis à votre écoute. Vous pouvez discuter avec moi, me demander de l'aide ou me donner un ordre (ex: 'Mets les élèves de Kinder A présents')." });
-    }
-
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -595,97 +589,92 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `Tu es l'assistant de direction de l'école LEKOL S&H en Haïti.
-Classes : [${classListStr}].
+            content: `Tu es l'assistant intelligent et amical de la direction de l'école LEKOL S&H en Haïti.
+Classes disponibles : [${classListStr}].
 
-Analyse le message de l'utilisateur et réponds EXCLUSIVEMENT avec un bloc JSON sous ce format précis (aucun autre texte) :
-
+Tu as deux façons de répondre :
+1. Si l'administrateur discute, dit bonjour, pose une question générale, fait une faute de frappe ou demande de l'aide : réponds-lui naturellement, poliment et directement en texte libre (pas de JSON).
+2. Si l'administrateur donne un ordre de gestion (ex: faire l'appel d'une classe, ajouter un congé, publier une annonce), réponds STRICTEMENT avec un objet JSON au format :
 {
-  "action": "discussion" | "presence" | "evenement" | "annonce",
-  "message_reponse": "Ton message de conversation amical, chaleureux et d'aide",
-  "reponse_intro": "Petite phrase de confirmation (ex: 'Entendu !')",
-  "classe_exacte": "Nom exact de la classe si action=presence",
+  "action": "presence" | "evenement" | "annonce",
+  "reponse_intro": "Petite phrase de confirmation",
+  "classe_exacte": "Nom exact de la classe",
   "statut": "PRESENT" | "ABSENT" | "RETARD",
-  "titre": "Titre si évènement ou annonce",
+  "titre": "Titre",
   "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT"
 }`
           },
           { role: "user", content: prompt }
         ],
-        temperature: 0.3
+        temperature: 0.7
       })
     });
 
     const aiData = await aiResponse.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
 
-    // Extraction propre du JSON même si l'IA rajoute des balises Markdown
-    let parsed = {};
+    // Vérifier si la réponse contient un bloc JSON (cas d'une commande)
     const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+    
     if (jsonMatch) {
       try {
-        parsed = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        parsed = {};
+        const parsed = JSON.parse(jsonMatch[0]);
+        const today = getTodayDate();
+
+        // 1. Prise d'Appel
+        if (parsed.action === "presence") {
+          const classNameReq = parsed.classe_exacte || "";
+          const cls = (await pool.query(
+            "SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1) OR lower(nom) LIKE lower($2) LIMIT 1",
+            [`%${classNameReq}%`, `%${prompt}%`]
+          )).rows[0];
+
+          if (cls) {
+            const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
+            if (students.rows.length === 0) {
+              return res.json({ message: `La classe **${cls.nom}** ne contient aucun élève pour le moment.` });
+            }
+            for (const s of students.rows) {
+              await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
+              await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
+            }
+            const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
+            return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
+          } else {
+            return res.json({ message: "⚠️ Je n'ai pas pu identifier la classe. Veuillez préciser (ex: 'Mets tous les élèves de Kinder A présents')." });
+          }
+        }
+
+        // 2. Événement / Congé
+        if (parsed.action === "evenement") {
+          await pool.query(
+            "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
+            [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
+          );
+          const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
+          return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier scolaire.` });
+        }
+
+        // 3. Annonce
+        if (parsed.action === "annonce") {
+          await pool.query(
+            "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
+            [parsed.titre || "Annonce Officielle", prompt]
+          );
+          const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
+          return res.json({ message: `🤖 ${intro}Votre annonce a été publiée avec succès sur le site.` });
+        }
+      } catch (err) {
+        // En cas de souci de parsing JSON, on traite comme du texte libre
       }
     }
 
-    const today = getTodayDate();
-
-    // 1. Prise d'Appel
-    if (parsed.action === "presence") {
-      const classNameReq = parsed.classe_exacte || "";
-
-      const cls = (await pool.query(
-        "SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1) OR lower(nom) LIKE lower($2) LIMIT 1",
-        [`%${classNameReq}%`, `%${prompt}%`]
-      )).rows[0];
-
-      if (cls) {
-        const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
-        
-        if (students.rows.length === 0) {
-          return res.json({ message: `${parsed.reponse_intro || 'D\'accord !'} Cependant, la classe **${cls.nom}** ne contient aucun élève pour l'instant.` });
-        }
-
-        for (const s of students.rows) {
-          await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
-          await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
-        }
-
-        const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
-        return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
-      } else {
-        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Veuillez préciser (ex: 'Mets tous les élèves de 1ère Année A présents')." });
-      }
-    }
-
-    // 2. Événement / Congé
-    if (parsed.action === "evenement") {
-      await pool.query(
-        "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
-        [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
-      );
-      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "Très bien ! ";
-      return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier.` });
-    }
-
-    // 3. Publication d'Annonce
-    if (parsed.action === "annonce") {
-      await pool.query(
-        "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
-        [parsed.titre || "Annonce Officielle", prompt]
-      );
-      const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est noté ! ";
-      return res.json({ message: `🤖 ${intro}L'annonce officielle a été publiée sur le site.` });
-    }
-
-    // 4. Par défaut : Discussion / Aide
-    return res.json({ message: parsed.message_reponse || rawContent.replace(/\{[\s\S]*\}/, '').trim() || "Je suis là ! Que puis-je faire pour la direction aujourd'hui ?" });
+    // Si ce n'est pas une commande, on renvoie directement la discussion en texte libre de Llama 3 !
+    return res.json({ message: rawContent });
 
   } catch (e) {
     console.error("Erreur API Groq:", e);
-    res.json({ error: "Une erreur est survenue lors de la connexion à l'IA." });
+    res.json({ error: "Une erreur est survenue lors de la communication avec l'assistant." });
   }
 });
 
