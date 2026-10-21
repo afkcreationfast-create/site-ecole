@@ -468,7 +468,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN AVEC ASSISTANT IA QWEN INTERACTIF
+// PANNEAU ADMIN AVEC ASSISTANT IA INTERACTIF
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -485,14 +485,14 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
       </div>
 
-      <!-- MODULE ASSISTANT IA QWEN -->
+      <!-- MODULE ASSISTANT IA -->
       <div class="card" style="border: 2px solid var(--blue);">
-        <h2>🤖 Assistant IA de Direction (Qwen)</h2>
+        <h2>🤖 Assistant IA de Direction</h2>
         <p style="color:var(--muted); margin-bottom: 12px;">Discutez naturellement ou donnez un ordre (ex: "Salut", "Aide-moi", "Hey AI, mets les élèves de Kinder A présents").</p>
         
         <div id="aiChatBox" style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; height:240px; padding:12px; overflow-y:auto; margin-bottom:12px; font-size:.9rem; display:flex; flex-direction:column; gap:8px;">
           <div style="color:var(--navy); background:#e2e8f0; padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">
-            🤖 <b>Qwen IA :</b> Bonjour ! Je suis l'assistant officiel de la direction. Comment puis-je vous aider aujourd'hui ?
+            🤖 <b>Assistant IA :</b> Bonjour ! Je suis l'assistant officiel de la direction. Comment puis-je vous aider aujourd'hui ?
           </div>
         </div>
 
@@ -520,10 +520,10 @@ app.get("/admin", requireAdmin, async (req, res) => {
               body: JSON.stringify({ prompt })
             });
             const data = await res.json();
-            const responseMsg = data.message || data.error || "Ordre exécuté avec succès.";
-            chatBox.innerHTML += \`<div style="background:#e2e8f0; color:var(--navy); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Qwen IA :</b> \${responseMsg}</div>\`;
+            const responseMsg = data.message || data.error || "Action effectuée avec succès.";
+            chatBox.innerHTML += \`<div style="background:#e2e8f0; color:var(--navy); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Assistant IA :</b> \${responseMsg}</div>\`;
           } catch(err) {
-            chatBox.innerHTML += \`<div style="background:#fee2e2; color:var(--danger); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Qwen IA :</b> Désolé, une erreur réseau est survenue.</div>\`;
+            chatBox.innerHTML += \`<div style="background:#fee2e2; color:var(--danger); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Assistant IA :</b> Désolé, une erreur réseau est survenue.</div>\`;
           }
           chatBox.scrollTop = chatBox.scrollHeight;
         });
@@ -565,7 +565,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API QWEN - VRAIE CONVERSATION NATURELLE & EXÉCUTION D'ORDRES
+// ROUTE API LLAMA 3 - CONVERSATION NATURELLE & EXÉCUTION D'ORDRES
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
   if (!prompt) return res.json({ error: "Aucun ordre ou message fourni." });
@@ -585,38 +585,26 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "qwen-2.5-32b",
+        model: "llama-3.3-70b-versatile",
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `Tu es Qwen, l'assistant amical, poli et très compétent de la direction de l'école LEKOL S&H en Haïti.
+            content: `Tu es l'assistant intelligent de la direction de l'école LEKOL S&H en Haïti.
+Classes disponibles : [${classListStr}].
 
-Liste des classes enregistrées dans l'école : [${classListStr}].
-
-Règles de comportement :
-1. Si l'utilisateur salue (salut, coucou, hey, bonjour), exprime de l'hésitation (hein, quoi, oui) ou demande de l'aide ("j'ai besoin d'aide", "tu fais quoi ?") :
-   - Définis "action": "discussion".
-   - Rédige une réponse fluide, polie et naturelle dans "message_reponse" pour entamer ou poursuivre la conversation et expliquer tes fonctionnalités.
-
-2. Si l'utilisateur donne un ordre d'action (ex: "mets les élèves de 1ere année A présents", "ajoute un congé", "publie une annonce") :
-   - Définis "action" à "presence", "evenement" ou "annonce".
-   - Rédige une petite phrase enthousiaste de confirmation dans "reponse_intro" (ex: "D'accord, je m'en occupe tout de suite !").
-
-Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
-{
-  "action": "discussion" | "presence" | "evenement" | "annonce",
-  "message_reponse": "Ton message conversationnel complet si action=discussion",
-  "reponse_intro": "Petite phrase de confirmation avant d'exécuter l'action",
-  "classe_exacte": "Nom exact de la classe si action=presence",
-  "statut": "PRESENT" | "ABSENT" | "RETARD",
-  "titre": "Titre si évènement ou annonce",
-  "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT"
-}`
+Tu dois analyser le message de l'administrateur et répondre strictement sous forme d'un objet JSON valide contenant :
+- "action": "discussion" (si c'est une salutation, une question, de l'aide ou une discussion générale) ou "presence" (pour l'appel) ou "evenement" (pour un congé/calendrier) ou "annonce" (pour publier une annonce).
+- "message_reponse": Ton texte de conversation amical, poli et détaillé si c'est une discussion ou une question.
+- "reponse_intro": Une petite phrase naturelle de confirmation si c'est une action (ex: "C'est parti !").
+- "classe_exacte": Le nom exact de la classe concernée si action=presence (pris parmi la liste).
+- "statut": "PRESENT", "ABSENT" ou "RETARD".
+- "titre": Titre de l'événement ou de l'annonce si applicable.
+- "type_evt": "CONGÉ", "FÉRIÉ", "EXAMEN" ou "ÉVÉNEMENT".`
           },
           { role: "user", content: prompt }
         ],
-        temperature: 0.3
+        temperature: 0.5
       })
     });
 
@@ -625,9 +613,9 @@ Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
     const parsed = JSON.parse(contentText);
     const today = getTodayDate();
 
-    // 1. Conversation / Salutations / Questions d'aide
+    // 1. Discussion / Salutations / Aide
     if (parsed.action === "discussion" || parsed.message_reponse) {
-      const defaultReply = "Bonjour ! Je suis Qwen, votre assistant de direction. Je peux faire l'appel pour une classe, enregistrer des congés au calendrier ou publier des annonces sur le site. Que souhaitez-vous faire ?";
+      const defaultReply = "Bonjour ! Je suis votre assistant de direction. Je peux vous aider à faire l'appel d'une classe, ajouter des congés au calendrier ou publier des annonces. Que souhaitez-vous faire ?";
       return res.json({ message: parsed.message_reponse || defaultReply });
     }
 
@@ -644,7 +632,7 @@ Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
         const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
         
         if (students.rows.length === 0) {
-          return res.json({ message: `${parsed.reponse_intro || 'Entendu !'} Cependant, aucun élève n'est inscrit en **${cls.nom}** pour le moment.` });
+          return res.json({ message: `${parsed.reponse_intro || 'Entendu !'} Cependant, aucun élève n'est inscrit dans la classe **${cls.nom}** pour le moment.` });
         }
 
         for (const s of students.rows) {
@@ -655,7 +643,7 @@ Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
         const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "C'est fait ! ";
         return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
       } else {
-        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Merci de préciser la classe (ex: Kinder A, 1ère Année A, etc.)." });
+        return res.json({ message: "⚠️ Je n'ai pas bien identifié la classe. Merci de préciser (ex: 'Mets les élèves de 1ère Année A présents')." });
       }
     }
 
@@ -679,11 +667,11 @@ Tu dois TOUJOURS répondre sous forme d'objet JSON valide avec cette structure :
       return res.json({ message: `🤖 ${intro}L'annonce officielle a été publiée sur le site.` });
     }
 
-    res.json({ message: parsed.message_reponse || "Avez-vous une autre demande pour la direction ?" });
+    res.json({ message: parsed.message_reponse || "Comment puis-je vous aider pour la suite ?" });
 
   } catch (e) {
-    console.error("Erreur Qwen:", e);
-    res.json({ error: "Une erreur est survenue lors de l'exécution de votre demande." });
+    console.error("Erreur Llama 3:", e);
+    res.json({ error: "Une erreur est survenue lors du traitement de votre demande." });
   }
 });
 
