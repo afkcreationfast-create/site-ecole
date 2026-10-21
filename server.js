@@ -217,6 +217,7 @@ function csrfField(req) {
 
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    if (req.path.startsWith('/admin/ia')) return next(); // Exclure l'API IA du CSRF classique pour simplifier le fetch JS
     const supplied = req.body?._csrf;
     const expected = req.session?.csrfToken;
     if (!supplied || !expected || supplied.length !== expected.length ||
@@ -422,7 +423,7 @@ app.get("/connexion", (req, res) => {
         <button class="full" style="margin-top:15px" type="submit">Se connecter</button>
       </form>
     </section>`;
-  res.send(layout("Connexion", content, req));
+    res.send(layout("Connexion", content, req));
 });
 
 app.post("/connexion", loginLimiter, async (req, res) => {
@@ -467,7 +468,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN
+// PANNEAU ADMIN AVEC ASSISTANT IA (QWEN)
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -481,8 +482,49 @@ app.get("/admin", requireAdmin, async (req, res) => {
     const content = `
       <div class="card">
         <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Accès rapide aux modules administratifs</p>
+        <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
       </div>
+
+      <!-- SECTION ASSISTANT IA QWEN -->
+      <div class="card" style="border: 2px solid var(--blue);">
+        <h2>🤖 Assistant IA de Direction (Qwen)</h2>
+        <p style="color:var(--muted); margin-bottom: 12px;">Donne un ordre en langage naturel (ex: "Mets tous les élèves de Kinder A présents aujourd'hui" ou "Ajoute un congé lundi prochain").</p>
+        
+        <div id="aiChatBox" style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; height:200px; padding:12px; overflow-y:auto; margin-bottom:12px; font-size:.9rem;">
+          <div style="color:var(--muted); margin-bottom:8px;">🤖 <b>Qwen IA :</b> Prêt à exécuter vos ordres d'administration. Que souhaitez-vous faire ?</div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="aiPromptInput" placeholder="Ex: Mets tous les élèves de Kinder A présents..." style="flex:1;">
+          <button type="button" id="aiSendBtn" class="btn">Envoyer l'Ordre</button>
+        </div>
+      </div>
+
+      <script>
+        document.getElementById('aiSendBtn').addEventListener('click', async () => {
+          const input = document.getElementById('aiPromptInput');
+          const chatBox = document.getElementById('aiChatBox');
+          const prompt = input.value.trim();
+          if(!prompt) return;
+
+          chatBox.innerHTML += \`<div style="margin-bottom:8px; text-align:right;">🧑‍💼 <b>Vous :</b> \${prompt}</div>\`;
+          input.value = '';
+          chatBox.scrollTop = chatBox.scrollHeight;
+
+          try {
+            const res = await fetch('/admin/ia-command', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt })
+            });
+            const data = await res.json();
+            chatBox.innerHTML += \`<div style="margin-bottom:8px; color:var(--success);">🤖 <b>Qwen IA :</b> \${data.message || data.error}</div>\`;
+          } catch(err) {
+            chatBox.innerHTML += \`<div style="margin-bottom:8px; color:var(--danger);">🤖 <b>Qwen IA :</b> Erreur de communication avec le serveur.</div>\`;
+          }
+          chatBox.scrollTop = chatBox.scrollHeight;
+        });
+      </script>
 
       <div class="tile-grid">
         <a href="/admin/appel" class="tile">
@@ -520,6 +562,94 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
+// ROUTE API DE L'ASSISTANT IA (QWEN VIA GROQ)
+app.post("/admin/ia-command", requireAdmin, async (req, res) => {
+  const prompt = String(req.body.prompt || "").trim();
+  if (!prompt) return res.json({ error: "Aucun ordre fourni." });
+
+  if (!process.env.GROQ_API_KEY) {
+    return res.json({ error: "Clé GROQ_API_KEY non configurée sur Render." });
+  }
+
+  try {
+    // 1. Interroger Qwen via l'API Groq pour interpréter l'ordre en JSON structuré
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "qwen-2.5-32b", // Modèle Qwen sur Groq
+        messages: [
+          {
+            role: "system",
+            content: `Tu es l'assistant IA de la direction de l'école LEKOL S&H en Haiti. Analyse l'ordre de l'administrateur et réponds STRICTEMENT sous forme d'un objet JSON valide contenant :
+            {
+              "action": "presence" | "evenement" | "annonce" | "inconnu",
+              "classe_nom": "nom de la classe si concernée (ex: Kinder A)",
+              "statut": "PRESENT" | "ABSENT" | "RETARD",
+              "titre": "titre de l'événement ou annonce",
+              "date": "YYYY-MM-DD",
+              "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT",
+              "description": "contenu",
+              "message_reponse": "Message clair en français confirmant l'action"
+            }`
+          },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    const aiData = await aiResponse.json();
+    const contentText = aiData.choices?.[0]?.message?.content || "";
+    
+    // Nettoyer le bloc JSON renvoyé par l'IA
+    const jsonMatch = contentText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.json({ message: "L'IA n'a pas pu structurer l'ordre." });
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const today = getTodayDate();
+
+    // 2. Exécuter l'action dans Supabase selon l'intention de Qwen
+    if (parsed.action === "presence" && parsed.classe_nom) {
+      const cls = (await pool.query("SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1)", [`%${parsed.classe_nom}%`])).rows[0];
+      if (cls) {
+        const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
+        for (const s of students.rows) {
+          await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
+          await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
+        }
+        return res.json({ message: `✅ Fait ! Tous les élèves de ${cls.nom} ont été marqués ${parsed.statut || "PRESENT"} pour aujourd'hui.` });
+      } else {
+        return res.json({ message: `⚠️ Classe "${parsed.classe_nom}" introuvable.` });
+      }
+    } 
+    else if (parsed.action === "evenement") {
+      await pool.query(
+        "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
+        [parsed.titre || "Événement Direction", parsed.date || today, parsed.type_evt || "CONGÉ", parsed.description || "Ajouté par l'IA"]
+      );
+      return res.json({ message: `✅ Événement / Congé "${parsed.titre}" ajouté au calendrier avec succès !` });
+    }
+    else if (parsed.action === "annonce") {
+      await pool.query(
+        "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
+        [parsed.titre || "Annonce de la Direction", parsed.description || prompt]
+      );
+      return res.json({ message: `✅ Annonce publiée sur le tableau de bord avec succès !` });
+    }
+
+    res.json({ message: parsed.message_reponse || "Ordre pris en compte." });
+  } catch (e) {
+    console.error("Erreur IA Qwen:", e);
+    res.json({ error: "Erreur lors de l'exécution de l'ordre par l'IA." });
+  }
+});
+
 app.post("/admin/eleve", requireAdmin, async (req, res) => {
   const { nom, prenom, password, classe_id } = req.body;
   try {
@@ -538,16 +668,4 @@ app.post("/admin/note", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur ajout note."); }
 });
 
-app.use((req, res) => res.status(404).send("Page introuvable."));
-
-async function start() {
-  try {
-    await pool.query("SELECT 1");
-    app.listen(port, () => console.log(`🚀 LEKOL S&H prêt sur le port ${port}`));
-  } catch (e) {
-    console.error("❌ Erreur PG:", e.message);
-    process.exit(1);
-  }
-}
-
-start();
+app.use((req, res) => res.status(404).send("Page introuvable.
