@@ -66,11 +66,7 @@ const h = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 const dateFr = value =>
   value ? new Date(value).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : "—";
 
-// Date automatique en temps réel (YYYY-MM-DD)
-const getTodayDate = () => {
-  const d = new Date();
-  return d.toISOString().split("T")[0];
-};
+const getTodayDate = () => new Date().toISOString().split("T")[0];
 
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
@@ -102,7 +98,6 @@ const layout = (title, content, req) => {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
 
-/* SIDEBAR MODERNE */
 .sidebar {
   width: var(--sidebar-w);
   background: var(--navy);
@@ -122,7 +117,6 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
 .nav-item:hover, .nav-item.active { background: #1e293b; color: #fff; }
 .nav-item.active { background: var(--blue); }
 
-/* MAIN CONTENT */
 .main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; }
 header.topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
 .toggle-btn { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--navy); }
@@ -130,7 +124,6 @@ header.topbar { background: #fff; border-bottom: 1px solid var(--border); paddin
 
 main.content { padding: 28px; max-width: 1200px; margin: 0 auto; width: 100%; }
 
-/* CARREAUX ET CARTE DE BORD */
 .tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 24px; }
 .tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 12px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
 .tile:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px #0000001a; border-color: var(--blue); }
@@ -234,7 +227,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ROUTE ACCUEIL - TABLEAU DE BORD À CARREAUX
+// ROUTE ACCUEIL
 app.get("/", async (req, res) => {
   try {
     const todayStr = dateFr(getTodayDate());
@@ -250,7 +243,7 @@ app.get("/", async (req, res) => {
         <a href="/admin/appel" class="tile">
           <div class="tile-icon">📝</div>
           <div class="tile-title">Prise d'Appel</div>
-          <div class="tile-desc">Faire la présence quotidienne par classe (Kinder A, etc.)</div>
+          <div class="tile-desc">Faire la présence par classe (Kinder A à 6ème B)</div>
         </a>
         <a href="/calendrier" class="tile">
           <div class="tile-icon">📅</div>
@@ -276,11 +269,11 @@ app.get("/", async (req, res) => {
   }
 });
 
-// SUB-PAGES : LISTE DES CLASSES POUR L'APPEL
+// SUB-PAGES : LISTE DES CLASSES ORDONNÉES POUR L'APPEL
 app.get("/admin/appel", requireAdmin, async (req, res) => {
   try {
     const todayAuto = getTodayDate();
-    const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY nom");
+    const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
 
     const content = `
       <div class="card">
@@ -293,7 +286,7 @@ app.get("/admin/appel", requireAdmin, async (req, res) => {
           <a href="/admin/appel/classe/${c.id}" class="tile">
             <div class="tile-icon">🏫</div>
             <div class="tile-title">${h(c.nom)}</div>
-            <div class="tile-desc">Niveau : ${h(c.niveau || "Fondamental")}</div>
+            <div class="tile-desc">Niveau : ${h(c.niveau)}</div>
           </a>
         `).join("") || "<p>Aucune classe enregistrée.</p>"}
       </div>`;
@@ -305,7 +298,7 @@ app.get("/admin/appel", requireAdmin, async (req, res) => {
   }
 });
 
-// SUB-PAGE SPÉCIFIQUE À UNE CLASSE (ex: Kinder A)
+// SUB-PAGE SPÉCIFIQUE À UNE CLASSE
 app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
   const classeId = Number(req.params.id);
   const dateAppel = String(req.query.date || getTodayDate());
@@ -328,7 +321,7 @@ app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
 
     const content = `
       <div class="card">
-        <p style="margin-bottom:10px"><a class="btn secondary" href="/admin/appel">← Retour à la liste des classes</a></p>
+        <p style="margin-bottom:10px"><a class="btn secondary" href="/admin/appel">← Retour aux classes</a></p>
         <h2>📋 Prise d'Appel — Classe : <span style="color:var(--blue)">${h(classe.nom)}</span></h2>
         <p style="color:var(--muted)">Date : <b>${dateFr(dateAppel)}</b></p>
       </div>
@@ -478,7 +471,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY nom").catch(() => ({ rows: [] })),
+      pool.query("SELECT id, nom FROM classes ORDER BY id ASC").catch(() => ({ rows: [] })),
       pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
     ]);
 
