@@ -562,7 +562,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// ROUTE API DE L'ASSISTANT IA (QWEN VIA GROQ)
+// ROUTE API DE L'ASSISTANT IA (QWEN VIA GROQ) - CORRIGÉE ET ROBUSTE
 app.post("/admin/ia-command", requireAdmin, async (req, res) => {
   const prompt = String(req.body.prompt || "").trim();
   if (!prompt) return res.json({ error: "Aucun ordre fourni." });
@@ -583,17 +583,19 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `Tu es l'assistant IA de la direction de l'école LEKOL S&H en Haiti. Analyse l'ordre de l'administrateur et réponds STRICTEMENT sous forme d'un objet JSON valide contenant :
-            {
-              "action": "presence" | "evenement" | "annonce" | "inconnu",
-              "classe_nom": "nom de la classe si concernée (ex: Kinder A)",
-              "statut": "PRESENT" | "ABSENT" | "RETARD",
-              "titre": "titre de l'événement ou annonce",
-              "date": "YYYY-MM-DD",
-              "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT",
-              "description": "contenu",
-              "message_reponse": "Message clair en français confirmant l'action"
-            }`
+            content: `Tu es l'assistant IA de la direction de l'école LEKOL S&H en Haiti. Analyse l'ordre de l'administrateur et réponds TOUJOURS au format JSON strict sans balises markdown ni texte autour.
+
+Format JSON attendu :
+{
+  "action": "presence" | "evenement" | "annonce" | "discussion",
+  "classe_nom": "nom de la classe si précisé (ex: Kinder A) ou 'toutes'",
+  "statut": "PRESENT" | "ABSENT" | "RETARD",
+  "titre": "titre de l'événement ou annonce",
+  "date": "YYYY-MM-DD",
+  "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT",
+  "description": "contenu du message ou de l'annonce",
+  "message_reponse": "Ton message de réponse amical à la direction"
+}`
           },
           { role: "user", content: prompt }
         ],
@@ -602,48 +604,65 @@ app.post("/admin/ia-command", requireAdmin, async (req, res) => {
     });
 
     const aiData = await aiResponse.json();
-    const contentText = aiData.choices?.[0]?.message?.content || "";
-    
+    let contentText = aiData.choices?.[0]?.message?.content || "";
+
+    // Nettoyage des balises Markdown ```json ... ``` ajoutées par Qwen
+    contentText = contentText.replace(/```json/gi, "").replace(/```/g, "").trim();
+
     const jsonMatch = contentText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return res.json({ message: "L'IA n'a pas pu structurer l'ordre." });
+      return res.json({ message: "Désolé, je n'ai pas compris cette commande. Exemple d'ordre : 'Mets tous les élèves de Kinder A présents'." });
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
     const today = getTodayDate();
 
-    if (parsed.action === "presence" && parsed.classe_nom) {
-      const cls = (await pool.query("SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1)", [`%${parsed.classe_nom}%`])).rows[0];
+    // 1. Action : Prise d'Appel / Présences
+    if (parsed.action === "presence") {
+      const targetClasse = String(parsed.classe_nom || "").trim();
+
+      if (!targetClasse || targetClasse === "toutes" || targetClasse === "null") {
+        return res.json({ message: "Veuillez préciser la classe. Exemple : 'Mets tous les élèves de Kinder A absents'." });
+      }
+
+      const cls = (await pool.query("SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1)", [`%${targetClasse}%`])).rows[0];
       if (cls) {
         const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
+        if (students.rows.length === 0) {
+          return res.json({ message: `Aucun élève inscrit en ${cls.nom} pour le moment.` });
+        }
         for (const s of students.rows) {
           await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
           await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
         }
-        return res.json({ message: `✅ Fait ! Tous les élèves de ${cls.nom} ont été marqués ${parsed.statut || "PRESENT"} pour aujourd'hui.` });
+        return res.json({ message: `✅ Ordre exécuté ! Tous les élèves de ${cls.nom} sont marqués : ${parsed.statut || "PRESENT"}.` });
       } else {
-        return res.json({ message: `⚠️ Classe "${parsed.classe_nom}" introuvable.` });
+        return res.json({ message: `⚠️ La classe "${targetClasse}" n'a pas été trouvée.` });
       }
     } 
+    // 2. Action : Ajouter un Congé / Événement
     else if (parsed.action === "evenement") {
       await pool.query(
         "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
-        [parsed.titre || "Événement Direction", parsed.date || today, parsed.type_evt || "CONGÉ", parsed.description || "Ajouté par l'IA"]
+        [parsed.titre || "Événement Direction", parsed.date || today, parsed.type_evt || "CONGÉ", parsed.description || prompt]
       );
-      return res.json({ message: `✅ Événement / Congé "${parsed.titre}" ajouté au calendrier avec succès !` });
+      return res.json({ message: `✅ Fait ! L'événement "${parsed.titre || "Congé"}" a été ajouté au calendrier.` });
     }
+    // 3. Action : Publier une Annonce
     else if (parsed.action === "annonce") {
       await pool.query(
         "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
         [parsed.titre || "Annonce de la Direction", parsed.description || prompt]
       );
-      return res.json({ message: `✅ Annonce publiée sur le tableau de bord avec succès !` });
+      return res.json({ message: `✅ Annonce officielle publiée sur la page d'accueil !` });
     }
 
-    res.json({ message: parsed.message_reponse || "Ordre pris en compte." });
+    // 4. Discussion générale
+    res.json({ message: parsed.message_reponse || "Bonjour ! Que puis-je faire pour la direction aujourd'hui ?" });
+
   } catch (e) {
     console.error("Erreur IA Qwen:", e);
-    res.json({ error: "Erreur lors de l'exécution de l'ordre par l'IA." });
+    res.json({ error: "Une erreur est survenue lors du traitement de la commande." });
   }
 });
 
