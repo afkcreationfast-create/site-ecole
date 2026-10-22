@@ -109,19 +109,19 @@ const layout = (title, content, req) => {
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
-                  <a href="/horaire" class="nav-item">📅 Horaire des Cours</a>
+                  <a href="/horaire" class="nav-item active">📅 Horaire des Cours</a>
                   <a href="/calendrier" class="nav-item">🗓️ Calendrier &amp; Présence</a>
                   <a href="/galerie" class="nav-item">📸 Galerie Scolaire</a>`;
 
   if (isAuth) {
     if (rolesAdmin.includes(userRole)) {
-      navItems += `<a href="/admin" class="nav-item active">⚙️ Panneau de Direction</a>`;
+      navItems += `<a href="/admin" class="nav-item">⚙️ Panneau de Direction</a>`;
     } else if (rolesProf.includes(userRole)) {
-      navItems += `<a href="/prof" class="nav-item active">👨‍🏫 Espace Professeur</a>`;
+      navItems += `<a href="/prof" class="nav-item">👨‍🏫 Espace Professeur</a>`;
     } else if (userRole === "PARENT") {
-      navItems += `<a href="/espace-parent" class="nav-item active">👪 Espace Parent</a>`;
+      navItems += `<a href="/espace-parent" class="nav-item">👪 Espace Parent</a>`;
     } else if (userRole === "ELEVE") {
-      navItems += `<a href="/espace-eleve" class="nav-item active">👨‍🎓 Mon Dossier Élève</a>`;
+      navItems += `<a href="/espace-eleve" class="nav-item">👨‍🎓 Mon Dossier Élève</a>`;
     }
   } else {
     navItems += `<a href="/connexion" class="nav-item">🔑 Se Connecter</a>`;
@@ -202,7 +202,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .btn, button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; transition: .15s; }
 .btn:hover, button:hover { background: var(--blue-hover); }
 .btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid var(--border); }
-.btn.danger { background: var(--danger); }
+.btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; }
 .btn.full { width: 100%; }
 
 .excel-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; border: 2px solid #cbd5e1; font-size: .9rem; }
@@ -338,7 +338,7 @@ app.get("/", async (req, res) => {
     } else if (rolesAdmin.includes(role)) {
       tilesHtml = `
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'Appel</div><div class="tile-desc">Faire l'appel par classe</div></a>
-        <a href="/admin/classes" class="tile"><div class="tile-icon">🏫</div><div class="tile-title">Classes &amp; Horaires</div><div class="tile-desc">Gérer matières et emplois du temps</div></a>
+        <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Éditer les Horaires</div><div class="tile-desc">Gérer les emplois du temps</div></a>
         <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Comptes, photos et notes</div></a>`;
     } else if (rolesProf.includes(role)) {
       tilesHtml = `
@@ -347,7 +347,7 @@ app.get("/", async (req, res) => {
     } else if (role === "ELEVE") {
       tilesHtml = `
         <a href="/espace-eleve" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Dossier Élève</div><div class="tile-desc">Notes, bulletin et photo de profil</div></a>
-        <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Mon Emploi du Temps</div><div class="tile-desc">Horaire officiel des cours</div></a>`;
+        <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Mon Emploi du Temps</div><div class="tile-desc">Horaire officiel de ma classe</div></a>`;
     } else if (role === "PARENT") {
       tilesHtml = `
         <a href="/espace-parent" class="tile"><div class="tile-icon">👪</div><div class="tile-title">Espace Parent</div><div class="tile-desc">Suivi de votre enfant</div></a>`;
@@ -366,7 +366,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// DOSSIER ÉLÈVE AVEC BOUTON DE PRISE DE PHOTO/GALERIE MOBILE
+// DOSSIER ÉLÈVE AVEC COMPRESSION AUTOMATIQUE
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
@@ -381,7 +381,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
     const photoUrl = student.photo_url || "https://via.placeholder.com/100";
 
     const content = `
-      <!-- EN-TÊTE PROFILE ÉLÈVE CONCUE POUR MOBILES -->
       <section class="card" style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:20px;padding:24px">
         <img src="${h(photoUrl)}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #fff">
         <div style="flex:1">
@@ -390,14 +389,13 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
           <p style="opacity:.9;font-size:.9rem">Code : <b>${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
         </div>
 
-        <!-- OPTION PHOTO EN UN CLIC (OPENT L'APPAREIL PHOTO DU TÉLÉPHONE) -->
         <form method="post" action="/espace-eleve/photo" style="background:rgba(255,255,255,0.1);padding:12px;border-radius:10px;width:100%;max-width:300px">
           ${csrfField(req)}
-          <label style="color:#fff;margin-top:0;font-size:.82rem">📷 Prendre / Changer sa Photo d'identité :</label>
+          <label style="color:#fff;margin-top:0;font-size:.82rem">📷 Prendre / Changer sa Photo :</label>
           <input type="file" id="photoInput" accept="image/*" style="display:none">
           <input type="hidden" name="photo_base64" id="photoBase64">
-          <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('photoInput').click()">📸 Prendre une photo / Galerie</button>
-          <button type="submit" id="savePhotoBtn" class="btn" style="width:100%;margin-top:6px;display:none;background:#22c55e">✅ Valider la Photo</button>
+          <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('photoInput').click()">📸 Appareil photo / Galerie</button>
+          <button type="submit" id="savePhotoBtn" class="btn" style="width:100%;margin-top:6px;display:none;background:#22c55e">✅ Enregistrer</button>
         </form>
       </section>
 
@@ -405,24 +403,39 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
         document.getElementById('photoInput').addEventListener('change', function(e) {
           const file = e.target.files[0];
           if (file) {
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-              document.getElementById('photoBase64').value = evt.target.result;
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = function() {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              const maxDim = 400;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > maxDim) { height *= maxDim / width; width = maxDim; }
+              } else {
+                if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              ctx.drawImage(img, 0, 0, width, height);
+
+              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+              document.getElementById('photoBase64').value = compressedBase64;
               document.getElementById('savePhotoBtn').style.display = 'block';
             };
-            reader.readAsDataURL(file);
           }
         });
       </script>
 
-      <!-- CARTES DE STATISTIQUES (ABSENCES, RETARDS, MOYENNE) -->
       <div class="tile-grid">
         <div class="stat-box"><div class="stat-value" style="color:var(--danger)">${absCount}</div><div class="stat-label">Absences</div></div>
         <div class="stat-box"><div class="stat-value" style="color:var(--gold)">${retCount}</div><div class="stat-label">Retards</div></div>
         <div class="stat-box"><div class="stat-value">${notes.rows.length}</div><div class="stat-label">Devoirs &amp; Notes</div></div>
       </div>
 
-      <!-- RELEVÉ DE NOTES TYPE EXCEL -->
       <section class="card">
         <h2>📊 Notes &amp; Évaluations</h2>
         <div style="overflow-x:auto">
@@ -444,7 +457,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
         </div>
       </section>
 
-      <!-- LISTE DES MATIÈRES DE LA CLASSE -->
       <section class="card">
         <h2>📚 Matières &amp; Professeurs de la classe</h2>
         <div style="overflow-x:auto">
@@ -467,7 +479,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// ACTION ENREGISTRATION DE PHOTO PAR L'ÉLÈVE
 app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   const { photo_base64 } = req.body;
   const id = req.session.user.id;
@@ -480,16 +491,49 @@ app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
 });
 
-// HORAIRE ET EMPLOI DU TEMPS
+// PAGE DYNAMIQUE : HORAIRE & EMPLOI DU TEMPS
+// STRICTEMENT VERROUILLÉE POUR L'ÉLÈVE, CHANGER DE CLASSE ET ÉDITION RÉSERVÉES AUX ADMINS
 app.get("/horaire", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
-    const classeId = isAuth ? req.session.user.classe_id : 1;
+    const userRole = isAuth ? req.session.user.role : null;
+    const isAdmin = rolesAdmin.includes(userRole);
 
-    const [classes, horaires] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY id ASC").catch(() => ({ rows: [] })),
-      pool.query("SELECT * FROM horaires WHERE classe_id=$1 ORDER BY id ASC", [classeId || 1]).catch(() => ({ rows: [] }))
+    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
+    
+    // Si ADMIN : Il peut choisir la classe via ?classe_id=X.
+    // Si ÉLÈVE : La classe est FIXE et STRICTEMENT verrouillée à la sienne.
+    let selectedClasseId = 1;
+    if (isAdmin) {
+      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (classes.rows[0]?.id || 1);
+    } else if (isAuth && req.session.user.classe_id) {
+      selectedClasseId = req.session.user.classe_id;
+    } else {
+      selectedClasseId = classes.rows[0]?.id || 1;
+    }
+
+    const [selectedClasse, horaires] = await Promise.all([
+      pool.query("SELECT nom FROM classes WHERE id=$1", [selectedClasseId]),
+      pool.query("SELECT * FROM horaires WHERE classe_id=$1 ORDER BY id ASC", [selectedClasseId])
     ]);
+
+    const classeNom = selectedClasse.rows[0]?.nom || "Classe";
+
+    // Sélecteur uniquement visible et utilisable par l'ADMIN
+    let classSelectHtml = "";
+    if (isAdmin) {
+      const classOptionsHtml = classes.rows.map(c => `
+        <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+      `).join("");
+
+      classSelectHtml = `
+        <div style="min-width:220px">
+          <label style="margin-top:0">Changer de classe (Mode Admin) :</label>
+          <select onchange="window.location.href='/horaire?classe_id=' + this.value">
+            ${classOptionsHtml}
+          </select>
+        </div>`;
+    }
 
     const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
@@ -497,32 +541,129 @@ app.get("/horaire", async (req, res) => {
       const coursJour = horaires.rows.filter(h => h.jour.toLowerCase() === j.toLowerCase());
       return `
         <div style="margin-bottom:20px">
-          <div style="background:var(--blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800">${j}</div>
+          <div style="background:var(--blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;display:flex;justify-content:space-between;align-items:center">
+            <span>${j}</span>
+            <span style="font-size:.8rem;font-weight:600;opacity:.9">${coursJour.length} cours planifié(s)</span>
+          </div>
           <table class="excel-table" style="margin-top:0">
-            <thead><tr><th>Heure</th><th>Matière</th><th>Professeur</th><th>Coeff</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Heure</th>
+                <th>Matière</th>
+                <th>Professeur</th>
+                <th>Coeff</th>
+                ${isAdmin ? "<th>Action</th>" : ""}
+              </tr>
+            </thead>
             <tbody>
               ${coursJour.map(c => `
                 <tr>
                   <td><b>${h(c.heure_debut)} – ${h(c.heure_fin)}</b></td>
                   <td><b>${h(c.matiere)}</b></td>
                   <td>${h(c.professeur)}</td>
-                  <td>${h(c.coeff)}</td>
+                  <td><span class="excel-badge">Coeff. ${h(c.coeff)}</span></td>
+                  ${isAdmin ? `
+                    <td>
+                      <form method="post" action="/admin/horaire/supprimer" style="display:inline">
+                        ${csrfField(req)}
+                        <input type="hidden" name="id" value="${c.id}">
+                        <input type="hidden" name="classe_id" value="${selectedClasseId}">
+                        <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce créneau ?')">🗑️ Supprimer</button>
+                      </form>
+                    </td>` : ""}
                 </tr>
-              `).join("") || "<tr><td colspan='4' style='text-align:center;color:var(--muted)'>Pas de cours planifié.</td></tr>"}
+              `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
             </tbody>
           </table>
         </div>`;
     }).join("");
 
+    let adminFormHtml = "";
+    if (isAdmin) {
+      adminFormHtml = `
+        <section class="card" style="border:2px dashed var(--blue);background:#eff6ff">
+          <h3 style="color:var(--navy);margin-bottom:10px">➕ Ajouter un créneau d'horaire pour : <span style="color:var(--blue)">${h(classeNom)}</span></h3>
+          <form method="post" action="/admin/horaire/ajouter">${csrfField(req)}
+            <input type="hidden" name="classe_id" value="${selectedClasseId}">
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px">
+              <div>
+                <label>Jour</label>
+                <select name="jour" required>
+                  <option value="Lundi">Lundi</option>
+                  <option value="Mardi">Mardi</option>
+                  <option value="Mercredi">Mercredi</option>
+                  <option value="Jeudi">Jeudi</option>
+                  <option value="Vendredi">Vendredi</option>
+                </select>
+              </div>
+              <div>
+                <label>Heure Début</label>
+                <input name="heure_debut" required placeholder="Ex. 08:00">
+              </div>
+              <div>
+                <label>Heure Fin</label>
+                <input name="heure_fin" required placeholder="Ex. 09:00">
+              </div>
+              <div>
+                <label>Matière</label>
+                <input name="matiere" required placeholder="Ex. Français, Mathématiques...">
+              </div>
+              <div>
+                <label>Professeur</label>
+                <input name="professeur" required placeholder="Ex. M. Béliard">
+              </div>
+              <div>
+                <label>Coefficient</label>
+                <input type="number" name="coeff" value="1" min="1" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn full" style="margin-top:15px">✅ Enregistrer ce créneau horaire</button>
+          </form>
+        </section>`;
+    }
+
     const content = `
       <section class="card">
-        <h2>📅 Horaire &amp; Emploi du Temps des Cours</h2>
-        <p style="color:var(--muted);margin-bottom:15px">Planning hebdomadaire des cours par classe :</p>
-        ${joursHtml}
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
+          <div>
+            <h2>📅 Horaire &amp; Emploi du Temps</h2>
+            <p style="color:var(--muted)">Emploi du temps officiel : <b style="color:var(--blue)">${h(classeNom)}</b></p>
+          </div>
+          
+          ${classSelectHtml}
+        </div>
+
+        ${adminFormHtml}
+
+        <div style="margin-top:20px">
+          ${joursHtml}
+        </div>
       </section>`;
 
-    res.send(layout("Horaire des cours", content, req));
+    res.send(layout(`Horaire - ${classeNom}`, content, req));
   } catch (e) { res.status(500).send("Erreur horaire."); }
+});
+
+// ACTIONS ADMIN POUR LES HORAIRES
+app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
+  const { classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO horaires (classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [Number(classe_id), String(jour).trim(), String(heure_debut).trim(), String(heure_fin).trim(), String(matiere).trim(), String(professeur).trim(), Number(coeff) || 1]
+    );
+    res.redirect(`/horaire?classe_id=${classe_id}`);
+  } catch (e) { res.status(500).send("Erreur ajout horaire."); }
+});
+
+app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
+  const { id, classe_id } = req.body;
+  try {
+    await pool.query("DELETE FROM horaires WHERE id=$1", [Number(id)]);
+    res.redirect(`/horaire?classe_id=${classe_id}`);
+  } catch (e) { res.status(500).send("Erreur suppression horaire."); }
 });
 
 // PANNEAU DIRECTION (ADMIN)
