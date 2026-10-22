@@ -71,13 +71,13 @@ const dateFr = value =>
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 
-// LAYOUT AVEC NAVIGATION SUR MESURE PAR RÔLE
+// LAYOUT
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const userRole = isAuth ? req.session.user.role : null;
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
-                  <a href="/calendrier" class="nav-item">📅 Calendrier &amp; Congés</a>
+                  <a href="/calendrier" class="nav-item">📅 Calendrier de Présence</a>
                   <a href="/galerie" class="nav-item">📸 Galerie Scolaire</a>`;
 
   if (isAuth) {
@@ -220,7 +220,7 @@ th { background: #f8fafc; color: #475569; font-weight: 700; }
 </html>`;
 };
 
-// PROTECTIONS DES ACCÈS SANS ÉCRAN "ACCÈS REFUSÉ" (REDIRECTION DOUCE)
+// PROTECTIONS DES ACCÈS (REDIRECTION AUTOMATIQUE SANS ACCÈS REFUSÉ)
 function requireAdmin(req, res, next) {
   if (!req.session.user) return res.redirect("/connexion");
   if (!rolesAdmin.includes(req.session.user.role)) {
@@ -299,8 +299,8 @@ app.get("/", async (req, res) => {
         </a>
         <a href="/calendrier" class="tile">
           <div class="tile-icon">📅</div>
-          <div class="tile-title">Calendrier Scolaire</div>
-          <div class="tile-desc">Consulter les jours fériés, congés et examens</div>
+          <div class="tile-title">Calendrier de Présence</div>
+          <div class="tile-desc">Consulter le calendrier des présences</div>
         </a>
         <a href="/galerie" class="tile">
           <div class="tile-icon">📸</div>
@@ -341,12 +341,12 @@ app.get("/", async (req, res) => {
         <a href="/espace-eleve" class="tile">
           <div class="tile-icon">👨‍🎓</div>
           <div class="tile-title">Mon Espace Élève</div>
-          <div class="tile-desc">Consulter mes notes et ma présence</div>
+          <div class="tile-desc">Consulter mes notes et évalutations</div>
         </a>
         <a href="/calendrier" class="tile">
           <div class="tile-icon">📅</div>
-          <div class="tile-title">Calendrier Scolaire</div>
-          <div class="tile-desc">Consulter les congés et examens</div>
+          <div class="tile-title">Calendrier de Présence</div>
+          <div class="tile-desc">Aperçu quotidien de mes présences du mois</div>
         </a>`;
     } else if (role === "PARENT") {
       tilesHtml = `
@@ -374,18 +374,44 @@ app.get("/", async (req, res) => {
   }
 });
 
-// PAGE SPÉCIFIQUE : ESPACE ÉLÈVE
+// ESPACE ÉLÈVE (UNIQUEMENT COMPTE, CLASSE ET NOTES)
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
     const student = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [id])).rows[0];
     const notes = await pool.query("SELECT matiere, note, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]).catch(() => ({ rows: [] }));
-    const presences = await pool.query("SELECT date_presence::text, statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
-    
-    const presenceMap = {};
-    presences.rows.forEach(p => {
-      presenceMap[p.date_presence.split("T")[0]] = p.statut;
-    });
+
+    const content = `
+      <section class="card">
+        <h2>👋 Espace Élève — ${h(student.prenom)} ${h(student.nom)}</h2>
+        <p>Code Unique : <b style="color:var(--blue)">${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
+      </section>
+
+      <section class="card">
+        <h2>📊 Mes Notes &amp; Évaluations</h2>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Matière</th><th>Note</th><th>Période</th></tr></thead>
+          <tbody>${notes.rows.map(n => `<tr><td><b>${h(n.matiere)}</b></td><td><strong style="color:var(--blue)">${h(n.note)} / 100</strong></td><td>${h(n.periode)}</td></tr>`).join("") || "<tr><td colspan='3'>Aucune note enregistrée pour le moment.</td></tr>"}</tbody>
+        </table></div>
+      </section>`;
+
+    res.send(layout("Mon Espace Élève", content, req));
+  } catch (e) { res.status(500).send("Erreur espace élève."); }
+});
+
+// PAGE PAGE CALENDRIER : REÇOIT DÉSORMAIS LE MINI CALENDRIER DE PRÉSENCE (SANS LISTE DE JOURS FÉRIÉS)
+app.get("/calendrier", async (req, res) => {
+  try {
+    const isAuth = !!req.session.user;
+    const id = isAuth ? req.session.user.id : null;
+
+    let presenceMap = {};
+    if (id) {
+      const presences = await pool.query("SELECT date_presence::text, statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
+      presences.rows.forEach(p => {
+        presenceMap[p.date_presence.split("T")[0]] = p.statut;
+      });
+    }
 
     const now = new Date();
     const year = now.getFullYear();
@@ -417,12 +443,9 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 
     const content = `
       <section class="card">
-        <h2>👋 Espace Élève — ${h(student.prenom)} ${h(student.nom)}</h2>
-        <p>Code Unique : <b style="color:var(--blue)">${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
-      </section>
-
-      <section class="card">
-        <h2>🗓️ Mon Calendrier de Présence — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+        <h2>🗓️ Calendrier de Présence — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+        <p style="color:var(--muted)">Aperçu quotidien de vos présences pour le mois en cours (Lundi à Dimanche) :</p>
+        
         <div class="calendar-grid">
           <div class="calendar-day-head">Lun</div>
           <div class="calendar-day-head">Mar</div>
@@ -433,26 +456,19 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
           <div class="calendar-day-head">Dim</div>
           ${calendarCellsHtml}
         </div>
+
         <div class="legend-box">
           <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> <b>Vert</b> = Présent (À l'heure)</div>
           <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> <b>Rouge</b> = Absent</div>
           <div class="legend-item"><span class="legend-dot" style="background:#64748b"></span> <b>Gris</b> = Présent mais en Retard</div>
         </div>
-      </section>
-
-      <section class="card">
-        <h2>📊 Mes Notes &amp; Évaluations</h2>
-        <div class="tablewrap"><table>
-          <thead><tr><th>Matière</th><th>Note</th><th>Période</th></tr></thead>
-          <tbody>${notes.rows.map(n => `<tr><td><b>${h(n.matiere)}</b></td><td><strong style="color:var(--blue)">${h(n.note)} / 100</strong></td><td>${h(n.periode)}</td></tr>`).join("") || "<tr><td colspan='3'>Aucune note enregistrée.</td></tr>"}</tbody>
-        </table></div>
       </section>`;
 
-    res.send(layout("Mon Espace Élève", content, req));
-  } catch (e) { res.status(500).send("Erreur espace élève."); }
+    res.send(layout("Calendrier de Présence", content, req));
+  } catch (e) { res.status(500).send("Erreur calendrier."); }
 });
 
-// PAGE SPÉCIFIQUE : ESPACE PARENT
+// ESPACE PARENT
 app.get("/espace-parent", requireParent, async (req, res) => {
   const content = `
     <section class="card">
@@ -462,7 +478,7 @@ app.get("/espace-parent", requireParent, async (req, res) => {
   res.send(layout("Espace Parent", content, req));
 });
 
-// PAGE SPÉCIFIQUE : ESPACE PROFESSEUR
+// ESPACE PROFESSEUR
 app.get("/prof", requireStaff, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -501,7 +517,7 @@ app.get("/prof", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace prof."); }
 });
 
-// PANNEAU ADMIN (RESERVÉ ADMINS / TITULAIRES)
+// PANNEAU ADMIN (ADMINS ET TITULAIRES)
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -559,7 +575,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur administration."); }
 });
 
-// PRISE D'APPEL (RESERVÉE ADMINS / PROFS)
+// PRISE D'APPEL
 app.get("/admin/appel", requireStaff, async (req, res) => {
   try {
     const todayAuto = getTodayDate();
@@ -648,7 +664,7 @@ app.post("/admin/appel/valider", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur validation appel."); }
 });
 
-// GESTION DES CLASSES (RESERVÉE ADMINS / PROFS)
+// GESTION DES CLASSES
 app.get("/admin/classes", requireStaff, async (req, res) => {
   try {
     const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
@@ -706,31 +722,6 @@ app.get("/admin/classes/:id", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur détails classe."); }
 });
 
-// CALENDRIER
-app.get("/calendrier", async (req, res) => {
-  try {
-    const evts = await pool.query("SELECT titre, date_evenement, type_evt, description FROM evenements ORDER BY date_evenement ASC");
-    const content = `
-      <section class="card">
-        <h2>📅 Calendrier Scolaire &amp; Jours Fériés — LEKOL S&amp;H</h2>
-        <div class="tablewrap"><table>
-          <thead><tr><th>Date</th><th>Événement / Congé</th><th>Type</th><th>Description</th></tr></thead>
-          <tbody>
-            ${evts.rows.map(e => `
-              <tr>
-                <td><b>${dateFr(e.date_evenement)}</b></td>
-                <td><b>${h(e.titre)}</b></td>
-                <td><span class="badge">${h(e.type_evt)}</span></td>
-                <td>${h(e.description || "—")}</td>
-              </tr>
-            `).join("") || "<tr><td colspan='4'>Aucun jour férié enregistré.</td></tr>"}
-          </tbody>
-        </table></div>
-      </section>`;
-    res.send(layout("Calendrier Scolaire", content, req));
-  } catch (e) { res.status(500).send("Erreur calendrier."); }
-});
-
 // GALERIE
 app.get("/galerie", async (req, res) => {
   try {
@@ -785,7 +776,7 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// ACTIONS ADMINS (CRÉATION ÉLÈVE ET NOTE)
+// ACTIONS ADMIN
 app.post("/admin/eleve", requireAdmin, async (req, res) => {
   const { nom, prenom, password, classe_id } = req.body;
   try {
