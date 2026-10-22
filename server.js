@@ -217,7 +217,6 @@ function csrfField(req) {
 
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    if (req.path.startsWith('/admin/ia')) return next();
     const supplied = req.body?._csrf;
     const expected = req.session?.csrfToken;
     if (!supplied || !expected || supplied.length !== expected.length ||
@@ -236,7 +235,7 @@ app.get("/", async (req, res) => {
       <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:32px">
         <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:99px;font-size:.85rem;font-weight:700">📅 Date du jour : ${todayStr}</span>
         <h1 style="font-size:2rem;margin:12px 0 6px">Portail Officiel — LEKOL S&amp;H</h1>
-        <p style="opacity:.9">Plateforme de gestion scolaire gratuite. Cliquez sur un carreau ci-dessous pour naviguer.</p>
+        <p style="opacity:.9">Plateforme de gestion scolaire officielle. Cliquez sur un service ci-dessous pour naviguer.</p>
       </div>
 
       <h2 style="margin-bottom:16px;color:var(--navy)">Services &amp; Actions Rapides</h2>
@@ -245,6 +244,11 @@ app.get("/", async (req, res) => {
           <div class="tile-icon">📝</div>
           <div class="tile-title">Prise d'Appel</div>
           <div class="tile-desc">Faire la présence par classe (Kinder A à 6ème B)</div>
+        </a>
+        <a href="/admin/classes" class="tile">
+          <div class="tile-icon">🏫</div>
+          <div class="tile-title">Gestion des Classes</div>
+          <div class="tile-desc">Voir les listes d'élèves par classe</div>
         </a>
         <a href="/calendrier" class="tile">
           <div class="tile-icon">📅</div>
@@ -256,11 +260,6 @@ app.get("/", async (req, res) => {
           <div class="tile-title">Galerie Photos</div>
           <div class="tile-desc">Photos des activités de l'école</div>
         </a>
-        <a href="/connexion" class="tile">
-          <div class="tile-icon">👨‍🎓</div>
-          <div class="tile-title">Espace Élèves / Parents</div>
-          <div class="tile-desc">Consulter son bulletin et ses devoirs</div>
-        </a>
       </div>`;
 
     res.send(layout("Tableau de bord", content, req));
@@ -270,7 +269,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// SUB-PAGES : LISTE DES CLASSES POUR L'APPEL
+// LISTE DES CLASSES POUR L'APPEL
 app.get("/admin/appel", requireAdmin, async (req, res) => {
   try {
     const todayAuto = getTodayDate();
@@ -278,8 +277,9 @@ app.get("/admin/appel", requireAdmin, async (req, res) => {
 
     const content = `
       <div class="card">
-        <h2>📝 Sélectionne une Classe pour la Prise d'Appel</h2>
-        <p style="color:var(--muted)">📅 Date détectée automatiquement : <b>${dateFr(todayAuto)}</b></p>
+        <p style="margin-bottom:10px"><a class="btn secondary" href="/admin">← Retour au Panneau Admin</a></p>
+        <h2>📝 Prise d'Appel Journalier</h2>
+        <p style="color:var(--muted)">📅 Date du jour : <b>${dateFr(todayAuto)}</b>. Sélectionnez une classe pour commencer l'appel.</p>
       </div>
 
       <div class="tile-grid">
@@ -299,10 +299,10 @@ app.get("/admin/appel", requireAdmin, async (req, res) => {
   }
 });
 
-// SUB-PAGE SPÉCIFIQUE À UNE CLASSE
+// PAGE D'APPEL D'UNE CLASSE SPÉCIFIQUE (3 options: Présent, Absent, Retard)
 app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
   const classeId = Number(req.params.id);
-  const dateAppel = String(req.query.date || getTodayDate());
+  const dateAppel = getTodayDate();
 
   try {
     const classe = (await pool.query("SELECT * FROM classes WHERE id=$1", [classeId])).rows[0];
@@ -312,19 +312,20 @@ app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
 
     const studentRows = students.rows.map(s => `
       <tr>
-        <td><b>${h(s.nom)} ${h(s.prenom)}</b> <small style="color:var(--muted)">(${h(s.code_eleve)})</small></td>
+        <td><b>${h(s.nom)} ${h(s.prenom)}</b></td>
+        <td><code style="background:#e2e8f0;padding:4px 8px;border-radius:4px">${h(s.code_eleve)}</code></td>
         <td>
-          <label style="display:inline-flex;align-items:center;margin-right:15px"><input type="radio" name="statut_${s.id}" value="PRESENT" checked style="width:auto;margin-right:5px"> Présent</label>
-          <label style="display:inline-flex;align-items:center;margin-right:15px"><input type="radio" name="statut_${s.id}" value="ABSENT" style="width:auto;margin-right:5px"> Absent</label>
-          <label style="display:inline-flex;align-items:center"><input type="radio" name="statut_${s.id}" value="RETARD" style="width:auto;margin-right:5px"> Retard</label>
+          <label style="display:inline-flex;align-items:center;margin-right:15px;cursor:pointer"><input type="radio" name="statut_${s.id}" value="PRESENT" checked style="width:auto;margin-right:5px">🟢 Présent</label>
+          <label style="display:inline-flex;align-items:center;margin-right:15px;cursor:pointer"><input type="radio" name="statut_${s.id}" value="ABSENT" style="width:auto;margin-right:5px">🔴 Absent</label>
+          <label style="display:inline-flex;align-items:center;cursor:pointer"><input type="radio" name="statut_${s.id}" value="RETARD" style="width:auto;margin-right:5px">🟡 Retard</label>
         </td>
       </tr>`).join("");
 
     const content = `
       <div class="card">
         <p style="margin-bottom:10px"><a class="btn secondary" href="/admin/appel">← Retour aux classes</a></p>
-        <h2>📋 Prise d'Appel — Classe : <span style="color:var(--blue)">${h(classe.nom)}</span></h2>
-        <p style="color:var(--muted)">Date : <b>${dateFr(dateAppel)}</b></p>
+        <h2>📋 Appel de la classe : <span style="color:var(--blue)">${h(classe.nom)}</span></h2>
+        <p style="color:var(--muted)">📅 Date enregistrée automatiquement : <b>${dateFr(dateAppel)}</b></p>
       </div>
 
       <section class="card">
@@ -335,13 +336,13 @@ app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
             <input type="hidden" name="date_presence" value="${dateAppel}">
             <div class="tablewrap">
               <table>
-                <thead><tr><th>Nom &amp; Prénom de l'Élève</th><th>Statut de présence</th></tr></thead>
+                <thead><tr><th>Nom &amp; Prénom</th><th>Code Élève</th><th>Statut de présence</th></tr></thead>
                 <tbody>${studentRows}</tbody>
               </table>
             </div>
-            <button style="margin-top:16px" class="btn" type="submit">✅ Valider l'Appel de ${h(classe.nom)}</button>
+            <button style="margin-top:20px" class="btn" type="submit">✅ Enregistrer l'Appel (${h(classe.nom)})</button>
           </form>
-        ` : "<p class='muted'>Aucun élève inscrit dans cette classe pour le moment.</p>"}
+        ` : "<p class='muted'>Aucun élève inscrit dans cette classe pour le moment. Utilisez le panneau d'administration pour en ajouter.</p>"}
       </section>`;
 
     res.send(layout(`Appel - ${classe.nom}`, content, req));
@@ -360,8 +361,66 @@ app.post("/admin/appel/valider", requireAdmin, async (req, res) => {
       await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, date_presence]);
       await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, statut, date_presence]);
     }
-    res.redirect(`/admin/appel/classe/${classe_id}`);
+    res.redirect(`/admin/appel/classe/${classe_id}?succes=1`);
   } catch (e) { console.error(e); res.status(500).send("Erreur validation appel."); }
+});
+
+// GESTION ET VISUALISATION DES CLASSES ET ÉLÈVES
+app.get("/admin/classes", requireAdmin, async (req, res) => {
+  try {
+    const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
+    const content = `
+      <div class="card">
+        <p style="margin-bottom:10px"><a class="btn secondary" href="/admin">← Retour au Panneau Admin</a></p>
+        <h2>🏫 Liste des Classes &amp; Élèves</h2>
+        <p style="color:var(--muted)">Cliquez sur une classe pour voir la liste détaillée des élèves inscrits et leurs codes.</p>
+      </div>
+
+      <div class="tile-grid">
+        ${classes.rows.map(c => `
+          <a href="/admin/classes/${c.id}" class="tile">
+            <div class="tile-icon">👥</div>
+            <div class="tile-title">${h(c.nom)}</div>
+            <div class="tile-desc">Niveau : ${h(c.niveau)}</div>
+          </a>
+        `).join("")}
+      </div>`;
+    res.send(layout("Gestion des Classes", content, req));
+  } catch (e) { res.status(500).send("Erreur classes."); }
+});
+
+app.get("/admin/classes/:id", requireAdmin, async (req, res) => {
+  const classeId = Number(req.params.id);
+  try {
+    const classe = (await pool.query("SELECT * FROM classes WHERE id=$1", [classeId])).rows[0];
+    if (!classe) return res.status(404).send("Classe non trouvée.");
+
+    const students = await pool.query("SELECT id, nom, prenom, code_eleve FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom", [classeId]);
+
+    const content = `
+      <div class="card">
+        <p style="margin-bottom:10px"><a class="btn secondary" href="/admin/classes">← Retour aux classes</a></p>
+        <h2>👥 Élèves de la classe : <span style="color:var(--blue)">${h(classe.nom)}</span></h2>
+        <p style="color:var(--muted)">Total : <b>${students.rows.length} élève(s) inscrit(s)</b></p>
+      </div>
+
+      <section class="card">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Nom &amp; Prénom</th><th>Code Unique</th></tr></thead>
+            <tbody>
+              ${students.rows.map(s => `
+                <tr>
+                  <td><b>${h(s.nom)} ${h(s.prenom)}</b></td>
+                  <td><code style="background:#e2e8f0;padding:4px 8px;border-radius:4px;font-weight:700">${h(s.code_eleve)}</code></td>
+                </tr>
+              `).join("") || "<tr><td colspan='2'>Aucun élève dans cette classe pour le moment.</td></tr>"}
+            </tbody>
+          </table>
+        </div>
+      </section>`;
+    res.send(layout(`Classe - ${classe.nom}`, content, req));
+  } catch (e) { res.status(500).send("Erreur détails classe."); }
 });
 
 // CALENDRIER
@@ -468,7 +527,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN AVEC ASSISTANT IA CONVERSATIONNEL
+// PANNEAU ADMIN OFFICIEL (SANS IA)
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -482,58 +541,19 @@ app.get("/admin", requireAdmin, async (req, res) => {
     const content = `
       <div class="card">
         <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Gestion globale et assistant intelligent</p>
+        <p style="color:var(--muted)">Gestion globale des élèves, des notes et de la présence scolaire.</p>
       </div>
-
-      <!-- MODULE ASSISTANT IA -->
-      <div class="card" style="border: 2px solid var(--blue);">
-        <h2>🤖 Assistant IA de Direction</h2>
-        <p style="color:var(--muted); margin-bottom: 12px;">Discutez naturellement ou donnez un ordre (ex: "Salut", "J'ai besoin d'aide", "Mets tous les élèves de Kinder A présents").</p>
-        
-        <div id="aiChatBox" style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; height:240px; padding:12px; overflow-y:auto; margin-bottom:12px; font-size:.9rem; display:flex; flex-direction:column; gap:8px;">
-          <div style="color:var(--navy); background:#e2e8f0; padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">
-            🤖 <b>Assistant IA :</b> Bonjour ! Je suis l'assistant intelligent de la direction. Comment puis-je vous aider aujourd'hui ?
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="aiPromptInput" placeholder="Écrivez votre message ou ordre..." style="flex:1;" onkeypress="if(event.key==='Enter') document.getElementById('aiSendBtn').click()">
-          <button type="button" id="aiSendBtn" class="btn">Envoyer</button>
-        </div>
-      </div>
-
-      <script>
-        document.getElementById('aiSendBtn').addEventListener('click', async () => {
-          const input = document.getElementById('aiPromptInput');
-          const chatBox = document.getElementById('aiChatBox');
-          const prompt = input.value.trim();
-          if(!prompt) return;
-
-          chatBox.innerHTML += \`<div style="background:#2563eb; color:#fff; padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-end;">🧑‍💼 <b>Vous :</b> \${prompt}</div>\`;
-          input.value = '';
-          chatBox.scrollTop = chatBox.scrollHeight;
-
-          try {
-            const res = await fetch('/admin/ia-command', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt })
-            });
-            const data = await res.json();
-            const responseMsg = data.message || data.error || "Action effectuée avec succès.";
-            chatBox.innerHTML += \`<div style="background:#e2e8f0; color:var(--navy); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Assistant IA :</b> \${responseMsg}</div>\`;
-          } catch(err) {
-            chatBox.innerHTML += \`<div style="background:#fee2e2; color:var(--danger); padding:8px 12px; border-radius:8px; max-width:85%; align-self:flex-start;">🤖 <b>Assistant IA :</b> Désolé, une erreur réseau est survenue.</div>\`;
-          }
-          chatBox.scrollTop = chatBox.scrollHeight;
-        });
-      </script>
 
       <div class="tile-grid">
         <a href="/admin/appel" class="tile">
           <div class="tile-icon">📝</div>
-          <div class="tile-title">Faire l'Appel</div>
-          <div class="tile-desc">Par sous-page de classe</div>
+          <div class="tile-title">Prise d'Appel</div>
+          <div class="tile-desc">Faire l'appel journalier (Présent, Absent, Retard)</div>
+        </a>
+        <a href="/admin/classes" class="tile">
+          <div class="tile-icon">🏫</div>
+          <div class="tile-title">Voir les Classes &amp; Élèves</div>
+          <div class="tile-desc">Consulter les listes d'élèves et codes uniques</div>
         </a>
       </div>
 
@@ -541,141 +561,28 @@ app.get("/admin", requireAdmin, async (req, res) => {
         <section class="card">
           <h2>➕ Inscrire un Élève</h2>
           <form method="post" action="/admin/eleve">${csrfField(req)}
-            <label>Nom</label><input name="nom" required>
-            <label>Prénom</label><input name="prenom" required>
-            <label>Classe</label><select name="classe_id" required><option value="">Choisir</option>${classOpts}</select>
+            <label>Nom</label><input name="nom" required placeholder="Nom de famille">
+            <label>Prénom</label><input name="prenom" required placeholder="Prénom">
+            <label>Classe</label><select name="classe_id" required><option value="">Choisir la classe</option>${classOpts}</select>
             <label>Mot de passe</label><input type="password" name="password" value="ecole2026" required>
-            <button style="margin-top:10px" type="submit">Créer le Compte Élève</button>
+            <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Élève</button>
           </form>
         </section>
 
         <section class="card">
           <h2>📊 Saisir une Note</h2>
           <form method="post" action="/admin/note">${csrfField(req)}
-            <label>Élève</label><select name="eleve_id" required><option value="">Choisir</option>${studentOpts}</select>
+            <label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select>
             <label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques">
-            <label>Note sur 100</label><input type="number" name="note" min="0" max="100" required>
-            <label>Période</label><input name="periode" required placeholder="1er Contrôle">
-            <button style="margin-top:10px" type="submit">Enregistrer la Note</button>
+            <label>Note sur 100</label><input type="number" name="note" min="0" max="100" required placeholder="Ex. 85">
+            <label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle">
+            <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
           </form>
         </section>
       </div>`;
 
     res.send(layout("Administration", content, req));
   } catch (e) { res.status(500).send("Erreur administration."); }
-});
-
-// ROUTE API LLAMA 3.3 — MODE HYBRIDE (CONVERSATION LIBRE + COMMANDES)
-app.post("/admin/ia-command", requireAdmin, async (req, res) => {
-  const prompt = String(req.body.prompt || "").trim();
-  if (!prompt) return res.json({ error: "Aucun ordre ou message fourni." });
-
-  if (!process.env.GROQ_API_KEY) {
-    return res.json({ error: "Clé GROQ_API_KEY non configurée sur Render." });
-  }
-
-  try {
-    const dbClasses = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
-    const classListStr = dbClasses.rows.map(c => `"${c.nom}"`).join(", ");
-
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: `Tu es l'assistant intelligent et amical de la direction de l'école LEKOL S&H en Haïti.
-Classes disponibles : [${classListStr}].
-
-Tu as deux façons de répondre :
-1. Si l'administrateur discute, dit bonjour, pose une question générale, fait une faute de frappe ou demande de l'aide : réponds-lui naturellement, poliment et directement en texte libre (pas de JSON).
-2. Si l'administrateur donne un ordre de gestion (ex: faire l'appel d'une classe, ajouter un congé, publier une annonce), réponds STRICTEMENT avec un objet JSON au format :
-{
-  "action": "presence" | "evenement" | "annonce",
-  "reponse_intro": "Petite phrase de confirmation",
-  "classe_exacte": "Nom exact de la classe",
-  "statut": "PRESENT" | "ABSENT" | "RETARD",
-  "titre": "Titre",
-  "type_evt": "CONGÉ" | "FÉRIÉ" | "EXAMEN" | "ÉVÉNEMENT"
-}`
-          },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7
-      })
-    });
-
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "";
-
-    // Vérifier si la réponse contient un bloc JSON (cas d'une commande)
-    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-    
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const today = getTodayDate();
-
-        // 1. Prise d'Appel
-        if (parsed.action === "presence") {
-          const classNameReq = parsed.classe_exacte || "";
-          const cls = (await pool.query(
-            "SELECT id, nom FROM classes WHERE lower(nom) LIKE lower($1) OR lower(nom) LIKE lower($2) LIMIT 1",
-            [`%${classNameReq}%`, `%${prompt}%`]
-          )).rows[0];
-
-          if (cls) {
-            const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [cls.id]);
-            if (students.rows.length === 0) {
-              return res.json({ message: `La classe **${cls.nom}** ne contient aucun élève pour le moment.` });
-            }
-            for (const s of students.rows) {
-              await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, today]);
-              await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, parsed.statut || "PRESENT", today]);
-            }
-            const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
-            return res.json({ message: `🤖 ${intro}Tous les élèves de la classe **${cls.nom}** ont été marqués : **${parsed.statut || "PRESENT"}** pour aujourd'hui.` });
-          } else {
-            return res.json({ message: "⚠️ Je n'ai pas pu identifier la classe. Veuillez préciser (ex: 'Mets tous les élèves de Kinder A présents')." });
-          }
-        }
-
-        // 2. Événement / Congé
-        if (parsed.action === "evenement") {
-          await pool.query(
-            "INSERT INTO evenements (titre, date_evenement, type_evt, description) VALUES ($1, $2, $3, $4)",
-            [parsed.titre || "Congé / Événement", today, parsed.type_evt || "CONGÉ", prompt]
-          );
-          const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
-          return res.json({ message: `🤖 ${intro}L'événement "**${parsed.titre || "Congé"}**" a été ajouté au calendrier scolaire.` });
-        }
-
-        // 3. Annonce
-        if (parsed.action === "annonce") {
-          await pool.query(
-            "INSERT INTO annonces (titre, contenu) VALUES ($1, $2)",
-            [parsed.titre || "Annonce Officielle", prompt]
-          );
-          const intro = parsed.reponse_intro ? `${parsed.reponse_intro} ` : "";
-          return res.json({ message: `🤖 ${intro}Votre annonce a été publiée avec succès sur le site.` });
-        }
-      } catch (err) {
-        // En cas de souci de parsing JSON, on traite comme du texte libre
-      }
-    }
-
-    // Si ce n'est pas une commande, on renvoie directement la discussion en texte libre de Llama 3 !
-    return res.json({ message: rawContent });
-
-  } catch (e) {
-    console.error("Erreur API Groq:", e);
-    res.json({ error: "Une erreur est survenue lors de la communication avec l'assistant." });
-  }
 });
 
 app.post("/admin/eleve", requireAdmin, async (req, res) => {
