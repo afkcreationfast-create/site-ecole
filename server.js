@@ -106,7 +106,6 @@ async function initTables() {
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
     `);
 
-    // S'assurer qu'au moins une classe par défaut existe
     const checkClasses = await pool.query("SELECT COUNT(*) FROM classes");
     if (parseInt(checkClasses.rows[0].count) === 0) {
       await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année', 'Fondamental'), ('2ème Année', 'Fondamental'), ('Kindergarten', 'Maternelle')");
@@ -636,7 +635,7 @@ app.get("/horaire", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur horaire."); }
 });
 
-// ACTIONS ADMIN POUR LES HORAIRES - SÉCURISÉES AVEC LOGS D'ERREUR
+// ACTIONS ADMIN POUR LES HORAIRES
 app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
   const { classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff } = req.body;
   try {
@@ -662,16 +661,16 @@ app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
   }
 });
 
-// CONNEXION FLEXIBLE (CODE, EMAIL, NOM, PRÉNOM)
+// CONNEXION STRICTEMENT PAR CODE OU EMAIL
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
   const content = `
     <section class="card" style="max-width:400px;margin:40px auto">
       <h2>🔑 Connexion</h2>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code élève (ex: S&amp;H-XXXX), votre e-mail, ou votre nom et prénom.</p>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code élève (ex: S&amp;H-XXXX) ou votre e-mail.</p>
       <form method="post" action="/connexion">${csrfField(req)}
-        <label>Identifiant / Nom / Code</label>
-        <input name="identifiant" required placeholder="Ex. Fransen Augustin ou S&amp;H-1234">
+        <label>Code Élève ou E-mail</label>
+        <input name="identifiant" required placeholder="Ex. S&amp;H-1234">
         <label>Mot de passe</label>
         <input type="password" name="password" required placeholder="••••••••">
         <button class="btn full" style="margin-top:15px">Se connecter</button>
@@ -684,26 +683,27 @@ app.post("/connexion", loginLimiter, async (req, res) => {
   const { identifiant, password } = req.body;
   try {
     const identClean = String(identifiant || "").trim();
+    
+    // REQUÊTE STRICTE : SEULEMENT CODE ÉLÈVE OU E-MAIL
     const queryText = `
       SELECT * FROM utilisateurs 
       WHERE lower(email) = lower($1) 
          OR code_eleve = $1 
-         OR lower(nom) = lower($1) 
-         OR lower(prenom) = lower($1)
-         OR lower(concat(prenom, ' ', nom)) = lower($1)
-         OR lower(concat(nom, ' ', prenom)) = lower($1)
       LIMIT 1
     `;
     const { rows } = await pool.query(queryText, [identClean]);
     const user = rows[0];
 
     if (!user || !(await bcrypt.compare(password, user.mot_de_passe).catch(() => user.mot_de_passe === password))) {
-      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--muted);margin:10px 0'>Vérifiez votre nom, prénom, code ou mot de passe.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
+      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--muted);margin:10px 0'>Vérifiez votre code élève ou votre mot de passe.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
     }
 
     req.session.user = { id: user.id, nom: user.nom, prenom: user.prenom, role: user.role, classe_id: user.classe_id, photo_url: user.photo_url };
     res.redirect(getHomeByRole(user.role));
-  } catch (e) { res.status(500).send("Erreur connexion."); }
+  } catch (e) { 
+    console.error("Erreur connexion:", e.message);
+    res.status(500).send("Erreur connexion."); 
+  }
 });
 
 app.get("/deconnexion", (req, res) => {
