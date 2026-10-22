@@ -147,7 +147,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 table { border-collapse: collapse; width: 100%; background: #fff; font-size: .92rem; }
 th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 13px; }
 th { background: #f8fafc; color: #475569; font-weight: 700; }
-.badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+
+/* MINI CALENDRIER DE PRÉSENCE */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 14px; text-align: center; }
+.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; padding: 6px 0; }
+.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--border); }
+.calendar-cell.empty { background: transparent; border: none; }
+.calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
+.calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
+.calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
+
+.legend-box { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: .88rem; font-weight: 600; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
@@ -269,7 +281,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// LISTE DES CLASSES POUR L'APPEL
+// PRIS D'APPEL
 app.get("/admin/appel", requireAdmin, async (req, res) => {
   try {
     const todayAuto = getTodayDate();
@@ -299,7 +311,6 @@ app.get("/admin/appel", requireAdmin, async (req, res) => {
   }
 });
 
-// PAGE D'APPEL D'UNE CLASSE SPÉCIFIQUE (3 options: Présent, Absent, Retard)
 app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
   const classeId = Number(req.params.id);
   const dateAppel = getTodayDate();
@@ -317,7 +328,7 @@ app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
         <td>
           <label style="display:inline-flex;align-items:center;margin-right:15px;cursor:pointer"><input type="radio" name="statut_${s.id}" value="PRESENT" checked style="width:auto;margin-right:5px">🟢 Présent</label>
           <label style="display:inline-flex;align-items:center;margin-right:15px;cursor:pointer"><input type="radio" name="statut_${s.id}" value="ABSENT" style="width:auto;margin-right:5px">🔴 Absent</label>
-          <label style="display:inline-flex;align-items:center;cursor:pointer"><input type="radio" name="statut_${s.id}" value="RETARD" style="width:auto;margin-right:5px">🟡 Retard</label>
+          <label style="display:inline-flex;align-items:center;cursor:pointer"><input type="radio" name="statut_${s.id}" value="RETARD" style="width:auto;margin-right:5px">🩶 Retard</label>
         </td>
       </tr>`).join("");
 
@@ -342,7 +353,7 @@ app.get("/admin/appel/classe/:id", requireAdmin, async (req, res) => {
             </div>
             <button style="margin-top:20px" class="btn" type="submit">✅ Enregistrer l'Appel (${h(classe.nom)})</button>
           </form>
-        ` : "<p class='muted'>Aucun élève inscrit dans cette classe pour le moment. Utilisez le panneau d'administration pour en ajouter.</p>"}
+        ` : "<p class='muted'>Aucun élève inscrit dans cette classe pour le moment.</p>"}
       </section>`;
 
     res.send(layout(`Appel - ${classe.nom}`, content, req));
@@ -365,7 +376,7 @@ app.post("/admin/appel/valider", requireAdmin, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).send("Erreur validation appel."); }
 });
 
-// GESTION ET VISUALISATION DES CLASSES ET ÉLÈVES
+// GESTION DES CLASSES
 app.get("/admin/classes", requireAdmin, async (req, res) => {
   try {
     const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
@@ -423,7 +434,7 @@ app.get("/admin/classes/:id", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur détails classe."); }
 });
 
-// CALENDRIER
+// CALENDRIER GENERAL
 app.get("/calendrier", async (req, res) => {
   try {
     const evts = await pool.query("SELECT titre, date_evenement, type_evt, description FROM evenements ORDER BY date_evenement ASC");
@@ -502,17 +513,84 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// ESPACE ÉLÈVE
+// ESPACE ÉLÈVE AVEC MINI CALENDRIER MOIS EN COURS ET LÉGENDE DES COULEURS
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
     const student = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [id])).rows[0];
     const notes = await pool.query("SELECT matiere, note, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]).catch(() => ({ rows: [] }));
+    
+    // Récupération des présences enregistrées pour cet élève
+    const presences = await pool.query("SELECT date_presence::text, statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
+    
+    // Map des statuts par date (AAAA-MM-JJ -> PRESENT / ABSENT / RETARD)
+    const presenceMap = {};
+    presences.rows.forEach(p => {
+      const dateKey = p.date_presence.split("T")[0];
+      presenceMap[dateKey] = p.statut;
+    });
+
+    // Génération du mini calendrier pour le mois en cours
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0 à 11
+    const monthName = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Dimanche
+    // Ajustement pour commencer le lundi (0=Lun, 6=Dim)
+    const startOffset = (firstDayIndex === 0 ? 6 : firstDayIndex - 1); 
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let calendarCellsHtml = "";
+
+    // Cases vides avant le 1er du mois
+    for (let i = 0; i < startOffset; i++) {
+      calendarCellsHtml += `<div class="calendar-cell empty"></div>`;
+    }
+
+    // Jours du mois
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayFormatted = String(day).padStart(2, '0');
+      const monthFormatted = String(month + 1).padStart(2, '0');
+      const fullDateStr = `${year}-${monthFormatted}-${dayFormatted}`;
+
+      const statut = presenceMap[fullDateStr];
+      let cellClass = "";
+      if (statut === "PRESENT") cellClass = "present";
+      else if (statut === "ABSENT") cellClass = "absent";
+      else if (statut === "RETARD") cellClass = "retard";
+
+      calendarCellsHtml += `<div class="calendar-cell ${cellClass}">${day}</div>`;
+    }
 
     const content = `
       <section class="card">
         <h2>👋 Espace Élève — ${h(student.prenom)} ${h(student.nom)}</h2>
         <p>Code Unique : <b style="color:var(--blue)">${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
+      </section>
+
+      <!-- MINI CALENDRIER DE PRÉSENCE DU MOIS -->
+      <section class="card">
+        <h2>🗓️ Calendrier de Présence — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+        <p style="color:var(--muted)">Aperçu quotidien de la présence en classe (Lundi à Dimanche) :</p>
+        
+        <div class="calendar-grid">
+          <div class="calendar-day-head">Lun</div>
+          <div class="calendar-day-head">Mar</div>
+          <div class="calendar-day-head">Mer</div>
+          <div class="calendar-day-head">Jeu</div>
+          <div class="calendar-day-head">Ven</div>
+          <div class="calendar-day-head">Sam</div>
+          <div class="calendar-day-head">Dim</div>
+          ${calendarCellsHtml}
+        </div>
+
+        <!-- LÉGENDE DES COULEURS DES SEMAINES -->
+        <div class="legend-box">
+          <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> <b>Vert</b> = Présent (À l'heure)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> <b>Rouge</b> = Absent</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#64748b"></span> <b>Gris</b> = Présent mais en Retard</div>
+        </div>
       </section>
 
       <section class="card">
@@ -527,7 +605,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur espace élève."); }
 });
 
-// PANNEAU ADMIN OFFICIEL (SANS IA)
+// PANNEAU ADMIN
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
