@@ -73,31 +73,47 @@ const getTodayDate = () => new Date().toISOString().split("T")[0];
 
 // MIGRATIONS AUTOMATIQUES BDD
 async function initTables() {
-  await pool.query(`
-    ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS photo_url TEXT;
-    
-    CREATE TABLE IF NOT EXISTS matieres_classes (
-      id SERIAL PRIMARY KEY,
-      classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
-      nom_matiere VARCHAR(100) NOT NULL,
-      nom_prof VARCHAR(100) DEFAULT 'Enseignant',
-      coeff INT DEFAULT 1
-    );
+  try {
+    await pool.query(`
+      ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS photo_url TEXT;
 
-    CREATE TABLE IF NOT EXISTS horaires (
-      id SERIAL PRIMARY KEY,
-      classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
-      jour VARCHAR(20) NOT NULL,
-      heure_debut VARCHAR(10) NOT NULL,
-      heure_fin VARCHAR(10) NOT NULL,
-      matiere VARCHAR(100) NOT NULL,
-      professeur VARCHAR(100) DEFAULT 'Enseignant',
-      coeff INT DEFAULT 1
-    );
+      CREATE TABLE IF NOT EXISTS classes (
+        id SERIAL PRIMARY KEY,
+        nom VARCHAR(100) NOT NULL,
+        niveau VARCHAR(50) DEFAULT 'Fondamental'
+      );
+      
+      CREATE TABLE IF NOT EXISTS matieres_classes (
+        id SERIAL PRIMARY KEY,
+        classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
+        nom_matiere VARCHAR(100) NOT NULL,
+        nom_prof VARCHAR(100) DEFAULT 'Enseignant',
+        coeff INT DEFAULT 1
+      );
 
-    ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
-    ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
-  `).catch(err => console.log("Info DB:", err.message));
+      CREATE TABLE IF NOT EXISTS horaires (
+        id SERIAL PRIMARY KEY,
+        classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
+        jour VARCHAR(20) NOT NULL,
+        heure_debut VARCHAR(10) NOT NULL,
+        heure_fin VARCHAR(10) NOT NULL,
+        matiere VARCHAR(100) NOT NULL,
+        professeur VARCHAR(100) DEFAULT 'Enseignant',
+        coeff INT DEFAULT 1
+      );
+
+      ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
+      ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
+    `);
+
+    // S'assurer qu'au moins une classe par défaut existe
+    const checkClasses = await pool.query("SELECT COUNT(*) FROM classes");
+    if (parseInt(checkClasses.rows[0].count) === 0) {
+      await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année', 'Fondamental'), ('2ème Année', 'Fondamental'), ('Kindergarten', 'Maternelle')");
+    }
+  } catch(err) {
+    console.log("Info DB init:", err.message);
+  }
 }
 initTables();
 
@@ -287,12 +303,6 @@ function requireStudent(req, res, next) {
   next();
 }
 
-function requireParent(req, res, next) {
-  if (!req.session.user) return res.redirect("/connexion");
-  if (req.session.user.role !== "PARENT") return res.redirect(getHomeByRole(req.session.user.role));
-  next();
-}
-
 function getHomeByRole(role) {
   if (rolesAdmin.includes(role)) return "/admin";
   if (rolesProf.includes(role)) return "/prof";
@@ -366,7 +376,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// DOSSIER ÉLÈVE AVEC COMPRESSION AUTOMATIQUE DE LA PHOTO
+// DOSSIER ÉLÈVE
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
@@ -455,24 +465,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section class="card">
-        <h2>📚 Matières &amp; Professeurs de la classe</h2>
-        <div style="overflow-x:auto">
-          <table class="excel-table">
-            <thead><tr><th>Matière</th><th>Enseignant</th><th>Coeff</th></tr></thead>
-            <tbody>
-              ${matieres.rows.map(m => `
-                <tr>
-                  <td><b>${h(m.nom_matiere)}</b></td>
-                  <td>${h(m.nom_prof)}</td>
-                  <td><span class="excel-badge">Coeff. ${h(m.coeff)}</span></td>
-                </tr>
-              `).join("") || "<tr><td colspan='3' style='text-align:center;padding:15px'>Matières générales.</td></tr>"}
-            </tbody>
-          </table>
-        </div>
       </section>`;
 
     res.send(layout("Dossier Élève", content, req));
@@ -500,13 +492,15 @@ app.get("/horaire", async (req, res) => {
 
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     
-    let selectedClasseId = 1;
-    if (isAdmin) {
-      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (classes.rows[0]?.id || 1);
+    if (classes.rows.length === 0) {
+      return res.send(layout("Horaire", "<section class='card'><h2>Aucune classe configurée</h2><p>Veuillez d'abord créer des classes dans l'administration.</p></section>", req));
+    }
+
+    let selectedClasseId = classes.rows[0].id;
+    if (isAdmin && req.query.classe_id) {
+      selectedClasseId = Number(req.query.classe_id);
     } else if (isAuth && req.session.user.classe_id) {
       selectedClasseId = req.session.user.classe_id;
-    } else {
-      selectedClasseId = classes.rows[0]?.id || 1;
     }
 
     const [selectedClasse, horaires] = await Promise.all([
@@ -642,7 +636,7 @@ app.get("/horaire", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur horaire."); }
 });
 
-// ACTIONS ADMIN POUR LES HORAIRES
+// ACTIONS ADMIN POUR LES HORAIRES - SÉCURISÉES AVEC LOGS D'ERREUR
 app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
   const { classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff } = req.body;
   try {
@@ -651,7 +645,10 @@ app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
       [Number(classe_id), String(jour).trim(), String(heure_debut).trim(), String(heure_fin).trim(), String(matiere).trim(), String(professeur).trim(), Number(coeff) || 1]
     );
     res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) { res.status(500).send("Erreur ajout horaire."); }
+  } catch (e) {
+    console.error("Erreur insertion horaire BDD:", e.message);
+    res.status(500).send("Erreur ajout horaire: " + e.message);
+  }
 });
 
 app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
@@ -659,10 +656,13 @@ app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
   try {
     await pool.query("DELETE FROM horaires WHERE id=$1", [Number(id)]);
     res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) { res.status(500).send("Erreur suppression horaire."); }
+  } catch (e) {
+    console.error("Erreur suppression horaire BDD:", e.message);
+    res.status(500).send("Erreur suppression horaire: " + e.message);
+  }
 });
 
-// CONNEXION FLEXIBLE (PAR CODE, EMAIL, NOM OU PRÉNOM)
+// CONNEXION FLEXIBLE (CODE, EMAIL, NOM, PRÉNOM)
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
   const content = `
@@ -684,7 +684,6 @@ app.post("/connexion", loginLimiter, async (req, res) => {
   const { identifiant, password } = req.body;
   try {
     const identClean = String(identifiant || "").trim();
-    // REQUÊTE FLEXIBLE : GÈRE LE CODE, L'EMAIL, LE NOM, LE PRÉNOM OU NOM + PRÉNOM
     const queryText = `
       SELECT * FROM utilisateurs 
       WHERE lower(email) = lower($1) 
@@ -839,87 +838,6 @@ app.get("/calendrier", async (req, res) => {
 
     res.send(layout("Calendrier de Présence", content, req));
   } catch (e) { res.status(500).send("Erreur calendrier."); }
-});
-
-// PRISE D'APPEL ET CLASSES
-app.get("/admin/appel", requireStaff, async (req, res) => {
-  try {
-    const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
-    const content = `<div class="card"><h2>📝 Prise d'Appel</h2><div class="tile-grid">${classes.rows.map(c => `<a href="/admin/appel/classe/${c.id}" class="tile"><div class="tile-title">${h(c.nom)}</div></a>`).join("")}</div></div>`;
-    res.send(layout("Prise d'Appel", content, req));
-  } catch (e) { res.status(500).send("Erreur appel."); }
-});
-
-app.get("/admin/appel/classe/:id", requireStaff, async (req, res) => {
-  const classeId = Number(req.params.id);
-  const dateAppel = getTodayDate();
-  try {
-    const classe = (await pool.query("SELECT * FROM classes WHERE id=$1", [classeId])).rows[0];
-    const students = await pool.query("SELECT id, nom, prenom, code_eleve FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom", [classeId]);
-
-    const studentRows = students.rows.map(s => `
-      <tr>
-        <td><b>${h(s.nom)} ${h(s.prenom)}</b></td>
-        <td><code>${h(s.code_eleve)}</code></td>
-        <td>
-          <label><input type="radio" name="statut_${s.id}" value="PRESENT" checked>🟢 Présent</label>
-          <label><input type="radio" name="statut_${s.id}" value="ABSENT">🔴 Absent</label>
-          <label><input type="radio" name="statut_${s.id}" value="RETARD">🩶 Retard</label>
-        </td>
-      </tr>`).join("");
-
-    const content = `
-      <div class="card">
-        <h2>📋 Appel : ${h(classe.nom)} (${dateFr(dateAppel)})</h2>
-        <form method="post" action="/admin/appel/valider">
-          ${csrfField(req)}
-          <input type="hidden" name="classe_id" value="${classeId}">
-          <input type="hidden" name="date_presence" value="${dateAppel}">
-          <table class="excel-table"><thead><tr><th>Nom</th><th>Code</th><th>Statut</th></tr></thead><tbody>${studentRows}</tbody></table>
-          <button style="margin-top:15px" class="btn" type="submit">Enregistrer l'Appel</button>
-        </form>
-      </div>`;
-    res.send(layout("Appel", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page."); }
-});
-
-app.post("/admin/appel/valider", requireStaff, async (req, res) => {
-  const { classe_id, date_presence } = req.body;
-  try {
-    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
-    for (const s of students.rows) {
-      const statut = req.body[`statut_${s.id}`] || "PRESENT";
-      await pool.query("DELETE FROM presences WHERE eleve_id=$1 AND date_presence=$2", [s.id, date_presence]);
-      await pool.query("INSERT INTO presences (eleve_id, statut, date_presence) VALUES ($1, $2, $3)", [s.id, statut, date_presence]);
-    }
-    res.redirect(`/admin/appel/classe/${classe_id}?succes=1`);
-  } catch (e) { res.status(500).send("Erreur validation."); }
-});
-
-app.get("/admin/classes", requireStaff, async (req, res) => {
-  try {
-    const classes = await pool.query("SELECT id, nom, niveau FROM classes ORDER BY id ASC");
-    const content = `<div class="card"><h2>🏫 Classes</h2><div class="tile-grid">${classes.rows.map(c => `<a href="/admin/classes/${c.id}" class="tile"><div class="tile-title">${h(c.nom)}</div></a>`).join("")}</div></div>`;
-    res.send(layout("Classes", content, req));
-  } catch (e) { res.status(500).send("Erreur."); }
-});
-
-app.get("/admin/classes/:id", requireStaff, async (req, res) => {
-  const classeId = Number(req.params.id);
-  try {
-    const classe = (await pool.query("SELECT * FROM classes WHERE id=$1", [classeId])).rows[0];
-    const students = await pool.query("SELECT id, nom, prenom, code_eleve FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom", [classeId]);
-    const content = `<div class="card"><h2>👥 ${h(classe.nom)}</h2><table class="excel-table"><thead><tr><th>Élève</th><th>Code</th></tr></thead><tbody>${students.rows.map(s => `<tr><td>${h(s.nom)} ${h(s.prenom)}</td><td><code>${h(s.code_eleve)}</code></td></tr>`).join("")}</tbody></table></div>`;
-    res.send(layout("Détails classe", content, req));
-  } catch (e) { res.status(500).send("Erreur."); }
-});
-
-app.get("/galerie", async (req, res) => {
-  try {
-    const { rows } = await pool.query("SELECT id, titre, description, COALESCE(image_data, image_url) AS img FROM galerie ORDER BY id DESC");
-    const content = `<section class="card"><h2>📸 Galerie Photos</h2><div class="grid">${rows.map(g => `<div><img src="${g.img}" style="width:100%;height:180px;object-fit:cover"><p>${h(g.titre)}</p></div>`).join("")}</div></section>`;
-    res.send(layout("Galerie", content, req));
-  } catch (e) { res.status(500).send("Erreur."); }
 });
 
 app.use((req, res) => res.status(404).send("Page introuvable."));
