@@ -76,6 +76,7 @@ async function initTables() {
   try {
     await pool.query(`
       ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS photo_url TEXT;
+      ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS email VARCHAR(150);
 
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
@@ -124,7 +125,7 @@ async function initTables() {
 }
 initTables();
 
-// LAYOUT AVEC DESIGN 100% ADAPTÉ AUX TÉLÉPHONES MOBILE (RESPONSIVE STRICT)
+// LAYOUT
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -176,7 +177,6 @@ const layout = (title, content, req) => {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
 
-/* SIDEBAR ET NAVIGATION MOBILE */
 .sidebar {
   width: var(--sidebar-w);
   background: var(--navy);
@@ -208,7 +208,6 @@ header.topbar { background: #fff; border-bottom: 1px solid var(--border); paddin
 
 main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; min-width: 0; }
 
-/* CARTES ET GRILLES RESPONSIVES MOBILE */
 .tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
 .tile:hover { transform: translateY(-2px); border-color: var(--blue); }
@@ -217,7 +216,7 @@ main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; mi
 .tile-desc { font-size: .83rem; color: var(--muted); }
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px #00000008; word-wrap: break-word; overflow: hidden; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 
 .stat-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
 .stat-value { font-size: 1.7rem; font-weight: 900; color: var(--blue); }
@@ -232,7 +231,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; }
 .btn.full { width: 100%; }
 
-/* TABLEAUX ADAPTÉS AUX ÉCRANS TÉLÉPHONE SANS DÉBORDEMENT */
 .excel-table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border); }
 .excel-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .88rem; min-width: 500px; }
 .excel-table th { background: #0f172a; color: #fff; text-align: left; padding: 10px 12px; font-weight: 700; border: 1px solid #334155; white-space: nowrap; }
@@ -240,7 +238,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .excel-table tr:nth-child(even) { background: #f8fafc; }
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
 
-/* MINI BADGE SCOLAIRE VIRTUEL */
 .student-badge-card {
   width: 100%;
   max-width: 360px;
@@ -263,7 +260,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .badge-code { font-family: monospace; font-size: .9rem; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; font-weight: 700; }
 .badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
 
-/* CALENDRIER MOBILE */
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 14px; text-align: center; }
 .calendar-day-head { font-weight: 700; font-size: .75rem; color: var(--muted); text-transform: uppercase; padding: 4px 0; }
 .calendar-cell { padding: 10px 2px; border-radius: 6px; font-weight: 700; font-size: .85rem; background: #f8fafc; border: 1px solid var(--border); }
@@ -368,7 +364,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ROUTE ACCUEIL AVEC PANNEAU D'ANNONCES OFFICIEL
+// ROUTE ACCUEIL
 app.get("/", async (req, res) => {
   try {
     const todayStr = dateFr(getTodayDate());
@@ -417,7 +413,6 @@ app.get("/", async (req, res) => {
         <p style="opacity:.9;font-size:.9rem">Plateforme de gestion scolaire officielle.</p>
       </div>
 
-      <!-- PANNEAU D'ANNONCES OFFICIEL -->
       <section class="card">
         <h2 style="margin-bottom:12px;color:var(--navy);display:flex;align-items:center;gap:8px">📢 Panneau d'Annonces &amp; Communiqués</h2>
         ${annoncesHtml}
@@ -430,14 +425,13 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// DOSSIER ÉLÈVE AVEC MINI-BADGE SCOLAIRE ET UPLOAD PHOTO MOBILE
+// DOSSIER ÉLÈVE
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
     const student = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [id])).rows[0];
     const notes = await pool.query("SELECT matiere, note, COALESCE(total_max, 100) as total_max, COALESCE(type_eval, 'Contrôle') as type_eval, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]).catch(() => ({ rows: [] }));
     const presences = await pool.query("SELECT statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
-    const matieres = await pool.query("SELECT nom_matiere, nom_prof, coeff FROM matieres_classes WHERE classe_id=$1", [student.classe_id]).catch(() => ({ rows: [] }));
 
     const absCount = presences.rows.filter(p => p.statut === "ABSENT").length;
     const retCount = presences.rows.filter(p => p.statut === "RETARD").length;
@@ -445,7 +439,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
     const photoUrl = student.photo_url || "https://via.placeholder.com/100";
 
     const content = `
-      <!-- MINI BADGE SCOLAIRE VIRTUEL EXCLUSIF -->
       <div class="student-badge-card">
         <div class="badge-header">
           <div class="badge-school">🎓 LEKOL S&amp;H</div>
@@ -465,7 +458,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
         </div>
       </div>
 
-      <!-- BOUTON SIMPLE DE PRISE DE PHOTO / GALERIE SUR TÉLÉPHONE -->
       <section class="card" style="text-align:center">
         <form method="post" action="/espace-eleve/photo">
           ${csrfField(req)}
@@ -553,7 +545,7 @@ app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
 });
 
-// PAGE DYNAMIQUE : HORAIRE & EMPLOI DU TEMPS
+// HORAIRE ET EMPLOI DU TEMPS
 app.get("/horaire", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -711,16 +703,16 @@ app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur suppression horaire."); }
 });
 
-// CONNEXION STRICTEMENT PAR CODE ÉLÈVE OU EMAIL
+// CONNEXION FLEXIBLE
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
   const content = `
     <section class="card" style="max-width:380px;margin:20px auto">
       <h2>🔑 Connexion</h2>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code élève (ex: S&amp;H-XXXX) ou votre e-mail.</p>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code (ex: S&amp;H-XXXX), e-mail ou identifiant.</p>
       <form method="post" action="/connexion">${csrfField(req)}
-        <label>Code Élève ou E-mail</label>
-        <input name="identifiant" required placeholder="Ex. S&amp;H-1234">
+        <label>Identifiant / Code / E-mail</label>
+        <input name="identifiant" required placeholder="Ex. S&amp;H-1234 ou admin">
         <label>Mot de passe</label>
         <input type="password" name="password" required placeholder="••••••••">
         <button class="btn full" style="margin-top:15px">Se connecter</button>
@@ -737,13 +729,14 @@ app.post("/connexion", loginLimiter, async (req, res) => {
       SELECT * FROM utilisateurs 
       WHERE lower(email) = lower($1) 
          OR code_eleve = $1 
+         OR lower(nom) = lower($1)
       LIMIT 1
     `;
     const { rows } = await pool.query(queryText, [identClean]);
     const user = rows[0];
 
     if (!user || !(await bcrypt.compare(password, user.mot_de_passe).catch(() => user.mot_de_passe === password))) {
-      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--muted);margin:10px 0'>Vérifiez votre code élève ou votre mot de passe.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
+      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--muted);margin:10px 0'>Vérifiez vos accès.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
     }
 
     req.session.user = { id: user.id, nom: user.nom, prenom: user.prenom, role: user.role, classe_id: user.classe_id, photo_url: user.photo_url };
@@ -755,21 +748,30 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// PANNEAU DIRECTION (ADMINISTRATEUR) AVEC PUBLICATION D'ANNONCES
+// PANNEAU DIRECTION (ADMINISTRATEUR) COMPLET AVEC CRÉATION DE COMPTES STAFF ET ANNONCES
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
-    const [classes, students] = await Promise.all([
+    const [classes, students, users] = await Promise.all([
       pool.query("SELECT id, nom FROM classes ORDER BY id ASC").catch(() => ({ rows: [] })),
-      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
+      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] })),
+      pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
     ]);
 
     const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
     const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.code_eleve)})</option>`).join("");
 
+    const staffRows = users.rows.map(u => `
+      <tr>
+        <td><b>${h(u.nom)} ${h(u.prenom)}</b></td>
+        <td><span class="excel-badge">${h(u.role)}</span></td>
+        <td>${h(u.email || "Non renseigné")}</td>
+      </tr>
+    `).join("") || "<tr><td colspan='3' style='text-align:center'>Aucun autre membre de la direction créé.</td></tr>";
+
     const content = `
       <div class="card">
         <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Gestion des annonces, inscriptions, notes et bulletins.</p>
+        <p style="color:var(--muted)">Gestion globale : Annonces, Inscriptions, Comptes Admins/Profs, Notes.</p>
       </div>
 
       <!-- PUBLIER UNE ANNONCE -->
@@ -779,12 +781,36 @@ app.get("/admin", requireAdmin, async (req, res) => {
           <label>Titre du Communiqué</label>
           <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
           <label>Contenu du Message</label>
-          <textarea name="contenu" rows="3" required placeholder="Détails du message à transmettre aux élèves et parents..."></textarea>
+          <textarea name="contenu" rows="3" required placeholder="Détails du message à transmettre..."></textarea>
           <button style="margin-top:12px" class="btn" type="submit">Publier l'Annonce</button>
         </form>
       </section>
 
       <div class="grid">
+        <!-- CRÉER UN COMPTE ADMIN / PROF / PARENT -->
+        <section class="card" style="border:2px solid var(--blue)">
+          <h2>👑 Créer un Compte Staff / Admin</h2>
+          <form method="post" action="/admin/utilisateur">${csrfField(req)}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
+              <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
+            </div>
+            <label>Rôle du Compte</label>
+            <select name="role" required>
+              <option value="ADMIN">Administrateur (Direction)</option>
+              <option value="PROF">Professeur / Enseignant</option>
+              <option value="TITULAIRE">Professeur Titulaire</option>
+              <option value="PARENT">Parent d'Élève</option>
+            </select>
+            <label>E-mail ou Identifiant de connexion</label>
+            <input name="email" required placeholder="Ex. direction@lekol.com ou nom_admin">
+            <label>Mot de passe</label>
+            <input type="password" name="password" required placeholder="••••••••">
+            <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Staff</button>
+          </form>
+        </section>
+
+        <!-- INSCRIRE UN ÉLÈVE -->
         <section class="card">
           <h2>➕ Inscrire un Élève</h2>
           <form method="post" action="/admin/eleve">${csrfField(req)}
@@ -797,31 +823,58 @@ app.get("/admin", requireAdmin, async (req, res) => {
             <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Élève</button>
           </form>
         </section>
+      </div>
 
-        <section class="card">
-          <h2>📊 Saisir Note / Devoir</h2>
-          <form method="post" action="/admin/note">${csrfField(req)}
-            <label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select>
-            <label>Type d'Évaluation</label>
-            <select name="type_eval" required>
-              <option value="Devoir Maison">Devoir Maison</option>
-              <option value="Exercice en Classe">Exercice en Classe</option>
-              <option value="Contrôle">Contrôle</option>
-              <option value="Examen">Examen</option>
-            </select>
-            <label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div><label>Note tenue</label><input type="number" step="0.5" name="note" required placeholder="8.5"></div>
-              <div><label>Sur combien ?</label><input type="number" name="total_max" value="100" required placeholder="100 ou 10"></div>
+      <!-- SAISIR UNE NOTE -->
+      <section class="card">
+        <h2>📊 Saisir Note / Devoir</h2>
+        <form method="post" action="/admin/note">${csrfField(req)}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
+            <div><label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select></div>
+            <div>
+              <label>Type d'Évaluation</label>
+              <select name="type_eval" required>
+                <option value="Devoir Maison">Devoir Maison</option>
+                <option value="Exercice en Classe">Exercice en Classe</option>
+                <option value="Contrôle">Contrôle</option>
+                <option value="Examen">Examen</option>
+              </select>
             </div>
-            <label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle">
-            <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
-          </form>
-        </section>
-      </div>`;
+            <div><label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques"></div>
+            <div><label>Note obtenue</label><input type="number" step="0.5" name="note" required placeholder="8.5"></div>
+            <div><label>Sur combien ?</label><input type="number" name="total_max" value="100" required placeholder="100 ou 10"></div>
+            <div><label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle"></div>
+          </div>
+          <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
+        </form>
+      </section>
+
+      <!-- LISTE DES COMPTES DIRECTION / PROFS EXISTANCE -->
+      <section class="card">
+        <h2>👥 Équipe Administrative &amp; Enseignants</h2>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead><tr><th>Nom &amp; Prénom</th><th>Rôle</th><th>Identifiant / E-mail</th></tr></thead>
+            <tbody>${staffRows}</tbody>
+          </table>
+        </div>
+      </section>`;
 
     res.send(layout("Administration", content, req));
   } catch (e) { res.status(500).send("Erreur admin."); }
+});
+
+// ROUTE CRÉATION D'UTILISATEUR (ADMIN/PROF/PARENT)
+app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
+  const { nom, prenom, role, email, password } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query(
+      "INSERT INTO utilisateurs (nom, prenom, role, email, mot_de_passe) VALUES ($1, $2, $3, $4, $5)",
+      [String(nom).trim(), String(prenom).trim(), String(role), String(email).trim(), hash]
+    );
+    res.redirect("/admin");
+  } catch (e) { res.status(500).send("Erreur création utilisateur."); }
 });
 
 app.post("/admin/annonce", requireAdmin, async (req, res) => {
