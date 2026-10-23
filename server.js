@@ -454,6 +454,109 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
+// ROUTE PRISE D'APPEL
+app.get("/admin/appel", requireStaff, async (req, res) => {
+  try {
+    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
+    if (classes.rows.length === 0) {
+      return res.send(layout("Prise d'Appel", "<section class='card'><h2>Aucune classe</h2><p>Veuillez d'abord ajouter des classes.</p></section>", req));
+    }
+
+    const selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
+    const selectedDate = req.query.date || getTodayDate();
+
+    const [students, presences] = await Promise.all([
+      pool.query("SELECT id, nom, prenom, code_eleve, photo_url FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom ASC, prenom ASC", [selectedClasseId]),
+      pool.query("SELECT eleve_id, statut FROM presences WHERE classe_id=$1 AND date_presence=$2", [selectedClasseId, selectedDate])
+    ]);
+
+    const presenceMap = {};
+    presences.rows.forEach(p => { presenceMap[p.eleve_id] = p.statut; });
+
+    const classOptionsHtml = classes.rows.map(c => `
+      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+    `).join("");
+
+    const rowsHtml = students.rows.map(s => {
+      const currentStatut = presenceMap[s.id] || "PRESENT";
+      const photo = s.photo_url || "https://via.placeholder.com/40";
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+              <div>
+                <b>${h(s.nom)} ${h(s.prenom)}</b>
+                <div style="font-size:.78rem;color:var(--muted)">${h(s.code_eleve)}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <select name="statut_${s.id}" style="padding:6px 10px">
+              <option value="PRESENT" ${currentStatut === "PRESENT" ? "selected" : ""}>✅ Présent</option>
+              <option value="ABSENT" ${currentStatut === "ABSENT" ? "selected" : ""}>❌ Absent</option>
+              <option value="RETARD" ${currentStatut === "RETARD" ? "selected" : ""}>⏳ Retard</option>
+            </select>
+          </td>
+        </tr>`;
+    }).join("") || "<tr><td colspan='2' style='text-align:center;padding:15px'>Aucun élève inscrit dans cette classe.</td></tr>";
+
+    const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
+      <section class="card">
+        <h2>📝 Prise d'Appel / Fiche de Présence</h2>
+        <p style="color:var(--muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
+        
+        <form method="get" action="/admin/appel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;background:#f8fafc;padding:12px;border-radius:10px">
+          <div style="flex:1;min-width:180px">
+            <label style="margin-top:0">Classe :</label>
+            <select name="classe_id" onchange="this.form.submit()">${classOptionsHtml}</select>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <label style="margin-top:0">Date :</label>
+            <input type="date" name="date" value="${selectedDate}" onchange="this.form.submit()">
+          </div>
+        </form>
+
+        <form method="post" action="/admin/appel">
+          ${csrfField(req)}
+          <input type="hidden" name="classe_id" value="${selectedClasseId}">
+          <input type="hidden" name="date" value="${selectedDate}">
+
+          <div class="excel-table-container">
+            <table class="excel-table">
+              <thead><tr><th>Élève</th><th>Statut de Présence</th></tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+
+          ${students.rows.length > 0 ? `<button type="submit" class="btn full" style="margin-top:15px">💾 Enregistrer l'Appel du ${dateFr(selectedDate)}</button>` : ""}
+        </form>
+      </section>`;
+
+    res.send(layout("Prise d'Appel", content, req));
+  } catch (e) { res.status(500).send("Erreur appel."); }
+});
+
+app.post("/admin/appel", requireStaff, async (req, res) => {
+  const { classe_id, date } = req.body;
+  try {
+    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
+    for (let s of students.rows) {
+      const statut = req.body[`statut_${s.id}`] || "PRESENT";
+      await pool.query(`
+        INSERT INTO presences (eleve_id, classe_id, date_presence, statut)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (eleve_id, date_presence) DO UPDATE SET statut = EXCLUDED.statut
+      `, [s.id, Number(classe_id), date, statut]);
+    }
+    res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date}`);
+  } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
+});
+
 // PANNEAU DIRECTION (MENU PRINCIPAL VERS LES SOUS-PAGES)
 app.get("/admin", requireAdmin, async (req, res) => {
   const content = `
