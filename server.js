@@ -133,7 +133,7 @@ async function initTables() {
 
     const checkClasses = await pool.query("SELECT COUNT(*) FROM classes");
     if (parseInt(checkClasses.rows[0].count) === 0) {
-      await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année', 'Fondamental'), ('2ème Année', 'Fondamental'), ('Kindergarten', 'Maternelle')");
+      await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année A', 'Fondamental'), ('1ère Année B', 'Fondamental'), ('2ème Année A', 'Fondamental'), ('Kindergarten', 'Maternelle')");
     }
   } catch(err) {
     console.log("Info DB init:", err.message);
@@ -141,7 +141,7 @@ async function initTables() {
 }
 initTables();
 
-// LAYOUT AVEC DESIGN 100% RESPONSIVE MOBILE
+// LAYOUT RESPONSIVE & STYLE GLOBAL
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -282,6 +282,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .gallery-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); }
 .gallery-body { padding: 12px; }
+
+.calendar-grid { 
+  display: grid !important; 
+  grid-template-columns: repeat(7, 1fr) !important; 
+  gap: 8px !important; 
+  margin-top: 14px !important; 
+  text-align: center !important; 
+}
+.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; padding: 6px 0; }
+.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--border); }
+.calendar-cell.empty { background: transparent; border: none; }
+.calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
+.calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
+.calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
 
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
@@ -440,7 +454,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE PRISE D'APPEL (PRESENCES)
+// ROUTE PRISE D'APPEL
 app.get("/admin/appel", requireStaff, async (req, res) => {
   try {
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
@@ -539,18 +553,18 @@ app.post("/admin/appel", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
 });
 
-// ROUTE GALERIE SCOLAIRE
+// ROUTE GALERIE SCOLAIRE CORRIGÉE
 app.get("/galerie", async (req, res) => {
   try {
-    const photos = await pool.query("SELECT * FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
+    const photos = await pool.query("SELECT id, titre, photo_base64, TO_CHAR(date_ajout, 'YYYY-MM-DD') as date_fmt FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
     const isAdmin = req.session.user && rolesAdmin.includes(req.session.user.role);
 
     const photosHtml = photos.rows.map(p => `
       <div class="gallery-card">
-        <img src="${h(p.photo_base64)}" class="gallery-img" alt="${h(p.titre)}">
+        <img src="${h(p.photo_base64)}" class="gallery-img" alt="${h(p.titre)}" onerror="this.src='https://via.placeholder.com/300?text=Image+Indisponible'">
         <div class="gallery-body">
           <strong style="color:var(--navy);display:block">${h(p.titre)}</strong>
-          <span style="font-size:.75rem;color:var(--muted)">Publié le ${dateFr(p.date_ajout)}</span>
+          <span style="font-size:.75rem;color:var(--muted)">Publié le ${dateFr(p.date_fmt)}</span>
           ${isAdmin ? `
             <form method="post" action="/admin/galerie/supprimer" style="margin-top:8px">
               ${csrfField(req)}
@@ -584,29 +598,12 @@ app.get("/galerie", async (req, res) => {
           document.getElementById('galerieInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-              const img = new Image();
-              img.src = URL.createObjectURL(file);
-              img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const maxDim = 800;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                  if (width > maxDim) { height *= maxDim / width; width = maxDim; }
-                } else {
-                  if (height > maxDim) { width *= maxDim / height; height = maxDim; }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-                document.getElementById('galerieBase64').value = compressedBase64;
+              const reader = new FileReader();
+              reader.onload = function(event) {
+                document.getElementById('galerieBase64').value = event.target.result;
                 document.getElementById('saveGalerieBtn').style.display = 'block';
               };
+              reader.readAsDataURL(file);
             }
           });
         </script>`;
@@ -696,29 +693,12 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
         document.getElementById('photoInput').addEventListener('change', function(e) {
           const file = e.target.files[0];
           if (file) {
-            const img = new Image();
-            img.src = URL.createObjectURL(file);
-            img.onload = function() {
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              const maxDim = 400;
-              let width = img.width;
-              let height = img.height;
-
-              if (width > height) {
-                if (width > maxDim) { height *= maxDim / width; width = maxDim; }
-              } else {
-                if (height > maxDim) { width *= maxDim / height; height = maxDim; }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              ctx.drawImage(img, 0, 0, width, height);
-
-              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-              document.getElementById('photoBase64').value = compressedBase64;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              document.getElementById('photoBase64').value = event.target.result;
               document.getElementById('savePhotoBtn').style.display = 'inline-flex';
             };
+            reader.readAsDataURL(file);
           }
         });
       </script>
@@ -969,16 +949,32 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// PANNEAU DIRECTION COMPLET AVEC LISTE DES ÉLÈVES ET CODES UNIQUES
+// PANNEAU DIRECTION COMPLET AVEC CLASSEMENT DES ÉLÈVES PAR CLASSE
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
+    const selectedClasseFilter = req.query.filter_classe_id ? Number(req.query.filter_classe_id) : null;
+
+    let studentQuery = "SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE'";
+    const studentParams = [];
+
+    if (selectedClasseFilter) {
+      studentQuery += " AND u.classe_id=$1";
+      studentParams.push(selectedClasseFilter);
+    }
+    studentQuery += " ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
+
     const [classes, students, users] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY id ASC").catch(() => ({ rows: [] })),
-      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] })),
+      pool.query("SELECT id, nom FROM classes ORDER BY nom ASC").catch(() => ({ rows: [] })),
+      pool.query(studentQuery, studentParams).catch(() => ({ rows: [] })),
       pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
     ]);
 
     const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
+    
+    const filterClassOpts = `<option value="">Toutes les classes</option>` + classes.rows.map(c => `
+      <option value="${c.id}" ${c.id === selectedClasseFilter ? "selected" : ""}>${h(c.nom)}</option>
+    `).join("");
+
     const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.code_eleve)})</option>`).join("");
 
     const studentRows = students.rows.map(s => {
@@ -1001,7 +997,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
             </form>
           </td>
         </tr>`;
-    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève inscrit.</td></tr>";
+    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève trouvé pour cette sélection.</td></tr>";
 
     const staffRows = users.rows.map(u => `
       <tr>
@@ -1092,9 +1088,20 @@ app.get("/admin", requireAdmin, async (req, res) => {
         </form>
       </section>
 
-      <!-- LISTE DES ÉLÈVES AVEC CODES UNIQUES -->
+      <!-- LISTE DES ÉLÈVES ET CODES UNIQUES TRIÉS PAR CLASSE -->
       <section class="card">
-        <h2>🎓 Liste des Élèves Inscrits &amp; Codes Uniques</h2>
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
+          <div>
+            <h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2>
+            <p style="color:var(--muted);font-size:.85rem;margin:2px 0 0 0">Filtré par classe pour une meilleure organisation</p>
+          </div>
+          <div style="min-width:200px">
+            <select style="padding:8px 12px;font-weight:bold" onchange="window.location.href='/admin?filter_classe_id=' + this.value">
+              ${filterClassOpts}
+            </select>
+          </div>
+        </div>
+
         <div class="excel-table-container">
           <table class="excel-table">
             <thead><tr><th>Élève</th><th>Classe</th><th>Code Élève Unique</th><th>Action</th></tr></thead>
@@ -1186,7 +1193,9 @@ app.get("/calendrier", async (req, res) => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     let calendarCellsHtml = "";
-    for (let i = 0; i < startOffset; i++) { calendarCellsHtml += `<div class="calendar-cell empty"></div>`; }
+    for (let i = 0; i < startOffset; i++) { 
+      calendarCellsHtml += `<div class="calendar-cell empty"></div>`; 
+    }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayFormatted = String(day).padStart(2, '0');
@@ -1205,13 +1214,19 @@ app.get("/calendrier", async (req, res) => {
       <section class="card">
         <h2>🗓️ Calendrier de Présence — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
         <div class="calendar-grid">
-          <div class="calendar-day-head">Lun</div><div class="calendar-day-head">Mar</div><div class="calendar-day-head">Mer</div><div class="calendar-day-head">Jeu</div><div class="calendar-day-head">Ven</div><div class="calendar-day-head">Sam</div><div class="calendar-day-head">Dim</div>
+          <div class="calendar-day-head">Lun</div>
+          <div class="calendar-day-head">Mar</div>
+          <div class="calendar-day-head">Mer</div>
+          <div class="calendar-day-head">Jeu</div>
+          <div class="calendar-day-head">Ven</div>
+          <div class="calendar-day-head">Sam</div>
+          <div class="calendar-day-head">Dim</div>
           ${calendarCellsHtml}
         </div>
-        <div class="legend-box">
-          <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> <b>Vert</b> = Présent</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> <b>Rouge</b> = Absent</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#64748b"></span> <b>Gris</b> = Retard</div>
+        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap">
+          <div class="legend-item"><span class="legend-dot" style="background:#22c55e;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Vert</b> = Présent</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Rouge</b> = Absent</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#64748b;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Gris</b> = Retard</div>
         </div>
       </section>`;
 
