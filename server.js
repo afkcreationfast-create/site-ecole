@@ -102,6 +102,14 @@ async function initTables() {
         coeff INT DEFAULT 1
       );
 
+      CREATE TABLE IF NOT EXISTS annonces (
+        id SERIAL PRIMARY KEY,
+        titre VARCHAR(200) NOT NULL,
+        contenu TEXT NOT NULL,
+        date_pub DATE DEFAULT CURRENT_DATE,
+        auteur VARCHAR(100) DEFAULT 'Direction'
+      );
+
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
     `);
@@ -116,7 +124,7 @@ async function initTables() {
 }
 initTables();
 
-// LAYOUT
+// LAYOUT AVEC DESIGN 100% ADAPTÉ AUX TÉLÉPHONES MOBILE (RESPONSIVE STRICT)
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -124,7 +132,7 @@ const layout = (title, content, req) => {
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
-                  <a href="/horaire" class="nav-item active">📅 Horaire des Cours</a>
+                  <a href="/horaire" class="nav-item">📅 Horaire des Cours</a>
                   <a href="/calendrier" class="nav-item">🗓️ Calendrier &amp; Présence</a>
                   <a href="/galerie" class="nav-item">📸 Galerie Scolaire</a>`;
 
@@ -136,7 +144,7 @@ const layout = (title, content, req) => {
     } else if (userRole === "PARENT") {
       navItems += `<a href="/espace-parent" class="nav-item">👪 Espace Parent</a>`;
     } else if (userRole === "ELEVE") {
-      navItems += `<a href="/espace-eleve" class="nav-item">👨‍🎓 Mon Dossier Élève</a>`;
+      navItems += `<a href="/espace-eleve" class="nav-item">👨‍🎓 Mon Dossier &amp; Badge</a>`;
     }
   } else {
     navItems += `<a href="/connexion" class="nav-item">🔑 Se Connecter</a>`;
@@ -146,7 +154,7 @@ const layout = (title, content, req) => {
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0f172a">
 <title>${h(title)} — LEKOL S&amp;H</title>
 <style>
@@ -168,6 +176,7 @@ const layout = (title, content, req) => {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
 
+/* SIDEBAR ET NAVIGATION MOBILE */
 .sidebar {
   width: var(--sidebar-w);
   background: var(--navy);
@@ -176,12 +185,14 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
   flex-direction: column;
   position: fixed;
   top: 0; bottom: 0; left: 0;
-  z-index: 100;
+  z-index: 1000;
   transition: transform .3s ease;
 }
-.sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; }
+.sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
 .sidebar-logo { font-size: 1.4rem; font-weight: 900; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 10px; }
 .sidebar-logo span { color: var(--gold); }
+.close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+
 .user-sidebar-card { display: flex; align-items: center; gap: 12px; padding: 15px 20px; border-bottom: 1px solid #1e293b; background: #162032; }
 .user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--blue); }
 
@@ -190,59 +201,85 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
 .nav-item:hover, .nav-item.active { background: #1e293b; color: #fff; }
 .nav-item.active { background: var(--blue); }
 
-.main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; }
-header.topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
-.toggle-btn { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--navy); }
+.main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; width: 100%; }
+header.topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--navy); }
 .user-badge { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: .9rem; }
 
-main.content { padding: 28px; max-width: 1200px; margin: 0 auto; width: 100%; }
+main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; min-width: 0; }
 
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 24px; }
-.tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 12px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
-.tile:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px #0000001a; border-color: var(--blue); }
-.tile-icon { font-size: 2rem; width: 50px; height: 50px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: var(--blue); }
-.tile-title { font-size: 1.1rem; font-weight: 800; color: var(--navy); }
-.tile-desc { font-size: .85rem; color: var(--muted); }
+/* CARTES ET GRILLES RESPONSIVES MOBILE */
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
+.tile:hover { transform: translateY(-2px); border-color: var(--blue); }
+.tile-icon { font-size: 1.8rem; width: 46px; height: 46px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: var(--blue); }
+.tile-title { font-size: 1.05rem; font-weight: 800; color: var(--navy); }
+.tile-desc { font-size: .83rem; color: var(--muted); }
 
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 4px #00000008; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px #00000008; word-wrap: break-word; overflow: hidden; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 
-.stat-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px; text-align: center; }
-.stat-value { font-size: 1.8rem; font-weight: 900; color: var(--blue); }
-.stat-label { font-size: .82rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+.stat-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+.stat-value { font-size: 1.7rem; font-weight: 900; color: var(--blue); }
+.stat-label { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
 
 label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
 input, select, textarea { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font: inherit; color: var(--text); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px #2563eb22; }
-.btn, button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; transition: .15s; }
+.btn, button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; transition: .15s; text-align: center; }
 .btn:hover, button:hover { background: var(--blue-hover); }
 .btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid var(--border); }
 .btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; }
 .btn.full { width: 100%; }
 
-.excel-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; border: 2px solid #cbd5e1; font-size: .9rem; }
-.excel-table th { background: #0f172a; color: #fff; text-align: left; padding: 10px 14px; font-weight: 700; border: 1px solid #334155; }
-.excel-table td { padding: 10px 14px; border: 1px solid #e2e8f0; }
+/* TABLEAUX ADAPTÉS AUX ÉCRANS TÉLÉPHONE SANS DÉBORDEMENT */
+.excel-table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border); }
+.excel-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .88rem; min-width: 500px; }
+.excel-table th { background: #0f172a; color: #fff; text-align: left; padding: 10px 12px; font-weight: 700; border: 1px solid #334155; white-space: nowrap; }
+.excel-table td { padding: 10px 12px; border: 1px solid #e2e8f0; }
 .excel-table tr:nth-child(even) { background: #f8fafc; }
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
 
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 14px; text-align: center; }
-.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; padding: 6px 0; }
-.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--border); }
+/* MINI BADGE SCOLAIRE VIRTUEL */
+.student-badge-card {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 20px auto;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  border-radius: 16px;
+  padding: 20px;
+  color: #fff;
+  box-shadow: 0 10px 20px -5px rgba(15,23,42,0.3);
+  border: 2px solid #3b82f6;
+  position: relative;
+  overflow: hidden;
+}
+.badge-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px; }
+.badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
+.badge-body { display: flex; align-items: center; gap: 16px; }
+.badge-photo { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; border: 3px solid #fff; background: #cbd5e1; }
+.badge-info { flex: 1; min-width: 0; }
+.badge-name { font-size: 1.1rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.badge-code { font-family: monospace; font-size: .9rem; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; font-weight: 700; }
+.badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
+
+/* CALENDRIER MOBILE */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 14px; text-align: center; }
+.calendar-day-head { font-weight: 700; font-size: .75rem; color: var(--muted); text-transform: uppercase; padding: 4px 0; }
+.calendar-cell { padding: 10px 2px; border-radius: 6px; font-weight: 700; font-size: .85rem; background: #f8fafc; border: 1px solid var(--border); }
 .calendar-cell.empty { background: transparent; border: none; }
 .calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
 .calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
 .calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
-
-.legend-box { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: .88rem; font-weight: 600; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
   .toggle-btn { display: block; }
+  .close-sidebar-btn { display: block; }
+  main.content { padding: 14px; }
+  .card { padding: 16px; }
 }
 </style>
 </head>
@@ -251,6 +288,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <a href="/" class="sidebar-logo">🎓 LEKOL <span>S&amp;H</span></a>
+    <button class="close-sidebar-btn" onclick="document.getElementById('sidebar').classList.remove('open')">✕</button>
   </div>
   ${isAuth ? `
   <div class="user-sidebar-card">
@@ -267,10 +305,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 <div class="main-wrapper">
   <header class="topbar">
-    <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
-    <div style="font-weight:800;color:var(--navy);font-size:1.1rem">LEKOL S&amp;H</div>
+    <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.add('open')">☰</button>
+    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H</div>
     <div class="user-badge">
-      ${isAuth ? `<span>${h(user.prenom)}</span> <a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion">Connexion</a>`}
+      ${isAuth ? `<a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion" style="padding:6px 12px;font-size:.8rem">Connexion</a>`}
     </div>
   </header>
 
@@ -330,12 +368,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// ROUTE ACCUEIL
+// ROUTE ACCUEIL AVEC PANNEAU D'ANNONCES OFFICIEL
 app.get("/", async (req, res) => {
   try {
     const todayStr = dateFr(getTodayDate());
     const isAuth = !!req.session.user;
     const role = isAuth ? req.session.user.role : null;
+
+    const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC LIMIT 5").catch(() => ({ rows: [] }));
 
     let tilesHtml = "";
 
@@ -355,27 +395,42 @@ app.get("/", async (req, res) => {
         <a href="/prof" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Notes &amp; Devoirs</div><div class="tile-desc">Saisir les évaluations</div></a>`;
     } else if (role === "ELEVE") {
       tilesHtml = `
-        <a href="/espace-eleve" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Dossier Élève</div><div class="tile-desc">Notes, bulletin et photo de profil</div></a>
+        <a href="/espace-eleve" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Mon Dossier &amp; Badge</div><div class="tile-desc">Notes, bulletin et carte d'étudiant</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Mon Emploi du Temps</div><div class="tile-desc">Horaire officiel de ma classe</div></a>`;
     } else if (role === "PARENT") {
       tilesHtml = `
         <a href="/espace-parent" class="tile"><div class="tile-icon">👪</div><div class="tile-title">Espace Parent</div><div class="tile-desc">Suivi de votre enfant</div></a>`;
     }
 
-    const content = `
-      <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:32px">
-        <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:999px;font-size:.85rem;font-weight:700">📅 Date du jour : ${todayStr}</span>
-        <h1 style="font-size:2rem;margin:12px 0 6px">Portail Officiel — LEKOL S&amp;H</h1>
-        <p style="opacity:.9">Plateforme de gestion scolaire officielle.</p>
+    const annoncesHtml = annonces.rows.map(a => `
+      <div style="border-left:4px solid var(--blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
+        <strong style="color:var(--navy);font-size:1rem;display:block">${h(a.titre)}</strong>
+        <span style="font-size:.78rem;color:var(--muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
+        <p style="margin-top:6px;font-size:.9rem;color:#334155">${h(a.contenu)}</p>
       </div>
-      <h2 style="margin-bottom:16px;color:var(--navy)">Accès Rapides</h2>
+    `).join("") || "<p style='color:var(--muted)'>Aucun communiqué officiel pour le moment.</p>";
+
+    const content = `
+      <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:24px">
+        <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:999px;font-size:.8rem;font-weight:700">📅 ${todayStr}</span>
+        <h1 style="font-size:1.8rem;margin:10px 0 4px;color:#fff">Portail Officiel — LEKOL S&amp;H</h1>
+        <p style="opacity:.9;font-size:.9rem">Plateforme de gestion scolaire officielle.</p>
+      </div>
+
+      <!-- PANNEAU D'ANNONCES OFFICIEL -->
+      <section class="card">
+        <h2 style="margin-bottom:12px;color:var(--navy);display:flex;align-items:center;gap:8px">📢 Panneau d'Annonces &amp; Communiqués</h2>
+        ${annoncesHtml}
+      </section>
+
+      <h2 style="margin-bottom:14px;color:var(--navy)">Accès Rapides</h2>
       <div class="tile-grid">${tilesHtml}</div>`;
 
     res.send(layout("Tableau de bord", content, req));
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// DOSSIER ÉLÈVE
+// DOSSIER ÉLÈVE AVEC MINI-BADGE SCOLAIRE ET UPLOAD PHOTO MOBILE
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
@@ -390,21 +445,37 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
     const photoUrl = student.photo_url || "https://via.placeholder.com/100";
 
     const content = `
-      <section class="card" style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:20px;padding:24px">
-        <img src="${h(photoUrl)}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #fff">
-        <div style="flex:1">
-          <span style="background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:6px;font-size:.8rem;font-weight:700">DOSSIER ÉLÈVE</span>
-          <h2 style="margin:6px 0 2px;color:#fff">${h(student.prenom)} ${h(student.nom)}</h2>
-          <p style="opacity:.9;font-size:.9rem">Code : <b>${h(student.code_eleve)}</b> · Classe : <b>${h(student.nom_classe || "Non assignée")}</b></p>
+      <!-- MINI BADGE SCOLAIRE VIRTUEL EXCLUSIF -->
+      <div class="student-badge-card">
+        <div class="badge-header">
+          <div class="badge-school">🎓 LEKOL S&amp;H</div>
+          <span style="font-size:.7rem;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-weight:700">CARTE ÉLÈVE</span>
         </div>
+        <div class="badge-body">
+          <img src="${h(photoUrl)}" class="badge-photo" alt="Photo de profil">
+          <div class="badge-info">
+            <div class="badge-name">${h(student.prenom)} ${h(student.nom)}</div>
+            <div style="font-size:.82rem;opacity:.9;margin-top:2px">Classe : <b>${h(student.nom_classe || "Non assignée")}</b></div>
+            <div class="badge-code">${h(student.code_eleve)}</div>
+          </div>
+        </div>
+        <div class="badge-footer">
+          <span>Année Académique 2025-2026</span>
+          <span style="font-weight:800;color:var(--gold)">VALIDÉ ✓</span>
+        </div>
+      </div>
 
-        <form method="post" action="/espace-eleve/photo" style="background:rgba(255,255,255,0.1);padding:12px;border-radius:10px;width:100%;max-width:300px">
+      <!-- BOUTON SIMPLE DE PRISE DE PHOTO / GALERIE SUR TÉLÉPHONE -->
+      <section class="card" style="text-align:center">
+        <form method="post" action="/espace-eleve/photo">
           ${csrfField(req)}
-          <label style="color:#fff;margin-top:0;font-size:.82rem">📷 Prendre / Changer sa Photo :</label>
+          <label style="margin-top:0;font-size:.9rem">📷 Changer la Photo d'Identité du Badge :</label>
           <input type="file" id="photoInput" accept="image/*" style="display:none">
           <input type="hidden" name="photo_base64" id="photoBase64">
-          <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('photoInput').click()">📸 Appareil photo / Galerie</button>
-          <button type="submit" id="savePhotoBtn" class="btn" style="width:100%;margin-top:6px;display:none;background:#22c55e">✅ Enregistrer</button>
+          <div style="display:flex;gap:10px;margin-top:10px;justify-content:center">
+            <button type="button" class="btn secondary" onclick="document.getElementById('photoInput').click()">📸 Prendre Photo / Galerie</button>
+            <button type="submit" id="savePhotoBtn" class="btn" style="display:none;background:#22c55e">✅ Enregistrer</button>
+          </div>
         </form>
       </section>
 
@@ -433,7 +504,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 
               const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
               document.getElementById('photoBase64').value = compressedBase64;
-              document.getElementById('savePhotoBtn').style.display = 'block';
+              document.getElementById('savePhotoBtn').style.display = 'inline-flex';
             };
           }
         });
@@ -447,7 +518,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 
       <section class="card">
         <h2>📊 Notes &amp; Évaluations</h2>
-        <div style="overflow-x:auto">
+        <div class="excel-table-container">
           <table class="excel-table">
             <thead>
               <tr><th>Matière</th><th>Type</th><th>Note Obtenue</th><th>Période</th></tr>
@@ -516,8 +587,8 @@ app.get("/horaire", async (req, res) => {
       `).join("");
 
       classSelectHtml = `
-        <div style="min-width:220px">
-          <label style="margin-top:0">Changer de classe (Mode Admin) :</label>
+        <div style="min-width:200px">
+          <label style="margin-top:0">Changer de classe :</label>
           <select onchange="window.location.href='/horaire?classe_id=' + this.value">
             ${classOptionsHtml}
           </select>
@@ -532,38 +603,40 @@ app.get("/horaire", async (req, res) => {
         <div style="margin-bottom:20px">
           <div style="background:var(--blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;display:flex;justify-content:space-between;align-items:center">
             <span>${j}</span>
-            <span style="font-size:.8rem;font-weight:600;opacity:.9">${coursJour.length} cours planifié(s)</span>
+            <span style="font-size:.8rem;font-weight:600;opacity:.9">${coursJour.length} cours</span>
           </div>
-          <table class="excel-table" style="margin-top:0">
-            <thead>
-              <tr>
-                <th>Heure</th>
-                <th>Matière</th>
-                <th>Professeur</th>
-                <th>Coeff</th>
-                ${isAdmin ? "<th>Action</th>" : ""}
-              </tr>
-            </thead>
-            <tbody>
-              ${coursJour.map(c => `
+          <div class="excel-table-container">
+            <table class="excel-table" style="margin-top:0">
+              <thead>
                 <tr>
-                  <td><b>${h(c.heure_debut)} – ${h(c.heure_fin)}</b></td>
-                  <td><b>${h(c.matiere)}</b></td>
-                  <td>${h(c.professeur)}</td>
-                  <td><span class="excel-badge">Coeff. ${h(c.coeff)}</span></td>
-                  ${isAdmin ? `
-                    <td>
-                      <form method="post" action="/admin/horaire/supprimer" style="display:inline">
-                        ${csrfField(req)}
-                        <input type="hidden" name="id" value="${c.id}">
-                        <input type="hidden" name="classe_id" value="${selectedClasseId}">
-                        <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce créneau ?')">🗑️ Supprimer</button>
-                      </form>
-                    </td>` : ""}
+                  <th>Heure</th>
+                  <th>Matière</th>
+                  <th>Professeur</th>
+                  <th>Coeff</th>
+                  ${isAdmin ? "<th>Action</th>" : ""}
                 </tr>
-              `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${coursJour.map(c => `
+                  <tr>
+                    <td><b>${h(c.heure_debut)} – ${h(c.heure_fin)}</b></td>
+                    <td><b>${h(c.matiere)}</b></td>
+                    <td>${h(c.professeur)}</td>
+                    <td><span class="excel-badge">Coeff. ${h(c.coeff)}</span></td>
+                    ${isAdmin ? `
+                      <td>
+                        <form method="post" action="/admin/horaire/supprimer" style="display:inline">
+                          ${csrfField(req)}
+                          <input type="hidden" name="id" value="${c.id}">
+                          <input type="hidden" name="classe_id" value="${selectedClasseId}">
+                          <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce créneau ?')">🗑️ Supprimer</button>
+                        </form>
+                      </td>` : ""}
+                  </tr>
+                `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
+              </tbody>
+            </table>
+          </div>
         </div>`;
     }).join("");
 
@@ -575,7 +648,7 @@ app.get("/horaire", async (req, res) => {
           <form method="post" action="/admin/horaire/ajouter">${csrfField(req)}
             <input type="hidden" name="classe_id" value="${selectedClasseId}">
             
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px">
               <div>
                 <label>Jour</label>
                 <select name="jour" required>
@@ -586,29 +659,14 @@ app.get("/horaire", async (req, res) => {
                   <option value="Vendredi">Vendredi</option>
                 </select>
               </div>
-              <div>
-                <label>Heure Début</label>
-                <input name="heure_debut" required placeholder="Ex. 08:00">
-              </div>
-              <div>
-                <label>Heure Fin</label>
-                <input name="heure_fin" required placeholder="Ex. 09:00">
-              </div>
-              <div>
-                <label>Matière</label>
-                <input name="matiere" required placeholder="Ex. Français, Mathématiques...">
-              </div>
-              <div>
-                <label>Professeur</label>
-                <input name="professeur" required placeholder="Ex. M. Béliard">
-              </div>
-              <div>
-                <label>Coefficient</label>
-                <input type="number" name="coeff" value="1" min="1" required>
-              </div>
+              <div><label>Heure Début</label><input name="heure_debut" required placeholder="08:00"></div>
+              <div><label>Heure Fin</label><input name="heure_fin" required placeholder="09:00"></div>
+              <div><label>Matière</label><input name="matiere" required placeholder="Français, Math..."></div>
+              <div><label>Professeur</label><input name="professeur" required placeholder="M. Béliard"></div>
+              <div><label>Coefficient</label><input type="number" name="coeff" value="1" min="1" required></div>
             </div>
 
-            <button type="submit" class="btn full" style="margin-top:15px">✅ Enregistrer ce créneau horaire</button>
+            <button type="submit" class="btn full" style="margin-top:15px">✅ Enregistrer ce créneau</button>
           </form>
         </section>`;
     }
@@ -620,7 +678,6 @@ app.get("/horaire", async (req, res) => {
             <h2>📅 Horaire &amp; Emploi du Temps</h2>
             <p style="color:var(--muted)">Emploi du temps officiel : <b style="color:var(--blue)">${h(classeNom)}</b></p>
           </div>
-          
           ${classSelectHtml}
         </div>
 
@@ -635,7 +692,6 @@ app.get("/horaire", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur horaire."); }
 });
 
-// ACTIONS ADMIN POUR LES HORAIRES
 app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
   const { classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff } = req.body;
   try {
@@ -644,10 +700,7 @@ app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
       [Number(classe_id), String(jour).trim(), String(heure_debut).trim(), String(heure_fin).trim(), String(matiere).trim(), String(professeur).trim(), Number(coeff) || 1]
     );
     res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) {
-    console.error("Erreur insertion horaire BDD:", e.message);
-    res.status(500).send("Erreur ajout horaire: " + e.message);
-  }
+  } catch (e) { res.status(500).send("Erreur ajout horaire."); }
 });
 
 app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
@@ -655,17 +708,14 @@ app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
   try {
     await pool.query("DELETE FROM horaires WHERE id=$1", [Number(id)]);
     res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) {
-    console.error("Erreur suppression horaire BDD:", e.message);
-    res.status(500).send("Erreur suppression horaire: " + e.message);
-  }
+  } catch (e) { res.status(500).send("Erreur suppression horaire."); }
 });
 
-// CONNEXION STRICTEMENT PAR CODE OU EMAIL
+// CONNEXION STRICTEMENT PAR CODE ÉLÈVE OU EMAIL
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
   const content = `
-    <section class="card" style="max-width:400px;margin:40px auto">
+    <section class="card" style="max-width:380px;margin:20px auto">
       <h2>🔑 Connexion</h2>
       <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code élève (ex: S&amp;H-XXXX) ou votre e-mail.</p>
       <form method="post" action="/connexion">${csrfField(req)}
@@ -683,8 +733,6 @@ app.post("/connexion", loginLimiter, async (req, res) => {
   const { identifiant, password } = req.body;
   try {
     const identClean = String(identifiant || "").trim();
-    
-    // REQUÊTE STRICTE : SEULEMENT CODE ÉLÈVE OU E-MAIL
     const queryText = `
       SELECT * FROM utilisateurs 
       WHERE lower(email) = lower($1) 
@@ -700,17 +748,14 @@ app.post("/connexion", loginLimiter, async (req, res) => {
 
     req.session.user = { id: user.id, nom: user.nom, prenom: user.prenom, role: user.role, classe_id: user.classe_id, photo_url: user.photo_url };
     res.redirect(getHomeByRole(user.role));
-  } catch (e) { 
-    console.error("Erreur connexion:", e.message);
-    res.status(500).send("Erreur connexion."); 
-  }
+  } catch (e) { res.status(500).send("Erreur connexion."); }
 });
 
 app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// PANNEAU DIRECTION (ADMIN)
+// PANNEAU DIRECTION (ADMINISTRATEUR) AVEC PUBLICATION D'ANNONCES
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students] = await Promise.all([
@@ -724,8 +769,20 @@ app.get("/admin", requireAdmin, async (req, res) => {
     const content = `
       <div class="card">
         <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Gestion des comptes, photos de profil, matières et notes.</p>
+        <p style="color:var(--muted)">Gestion des annonces, inscriptions, notes et bulletins.</p>
       </div>
+
+      <!-- PUBLIER UNE ANNONCE -->
+      <section class="card">
+        <h2>📢 Publier une Annonce Officielle</h2>
+        <form method="post" action="/admin/annonce">${csrfField(req)}
+          <label>Titre du Communiqué</label>
+          <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
+          <label>Contenu du Message</label>
+          <textarea name="contenu" rows="3" required placeholder="Détails du message à transmettre aux élèves et parents..."></textarea>
+          <button style="margin-top:12px" class="btn" type="submit">Publier l'Annonce</button>
+        </form>
+      </section>
 
       <div class="grid">
         <section class="card">
@@ -765,6 +822,14 @@ app.get("/admin", requireAdmin, async (req, res) => {
 
     res.send(layout("Administration", content, req));
   } catch (e) { res.status(500).send("Erreur admin."); }
+});
+
+app.post("/admin/annonce", requireAdmin, async (req, res) => {
+  const { titre, contenu } = req.body;
+  try {
+    await pool.query("INSERT INTO annonces (titre, contenu, auteur) VALUES ($1, $2, $3)", [String(titre).trim(), String(contenu).trim(), "Direction"]);
+    res.redirect("/");
+  } catch (e) { res.status(500).send("Erreur annonce."); }
 });
 
 app.post("/admin/eleve", requireAdmin, async (req, res) => {
