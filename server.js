@@ -123,9 +123,15 @@ async function initTables() {
         eleve_id INT REFERENCES utilisateurs(id) ON DELETE CASCADE,
         classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
         date_presence DATE NOT NULL,
-        statut VARCHAR(20) NOT NULL,
-        UNIQUE(eleve_id, date_presence)
+        statut VARCHAR(20) NOT NULL
       );
+
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'presences_eleve_id_date_presence_key') THEN
+          ALTER TABLE presences ADD CONSTRAINT presences_eleve_id_date_presence_key UNIQUE (eleve_id, date_presence);
+        END IF;
+      END $$;
 
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
@@ -554,7 +560,10 @@ app.post("/admin/appel", requireStaff, async (req, res) => {
       `, [s.id, Number(classe_id), date, statut]);
     }
     res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date}`);
-  } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
+  } catch (e) {
+    console.error("ERREUR APPEL DETAIL:", e.message);
+    res.status(500).send("Erreur enregistrement appel : " + e.message);
+  }
 });
 
 // PANNEAU DIRECTION (MENU PRINCIPAL VERS LES SOUS-PAGES)
