@@ -111,6 +111,22 @@ async function initTables() {
         auteur VARCHAR(100) DEFAULT 'Direction'
       );
 
+      CREATE TABLE IF NOT EXISTS galerie (
+        id SERIAL PRIMARY KEY,
+        titre VARCHAR(200) NOT NULL,
+        photo_base64 TEXT NOT NULL,
+        date_ajout DATE DEFAULT CURRENT_DATE
+      );
+
+      CREATE TABLE IF NOT EXISTS presences (
+        id SERIAL PRIMARY KEY,
+        eleve_id INT REFERENCES utilisateurs(id) ON DELETE CASCADE,
+        classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
+        date_presence DATE NOT NULL,
+        statut VARCHAR(20) NOT NULL,
+        UNIQUE(eleve_id, date_presence)
+      );
+
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
     `);
@@ -125,7 +141,7 @@ async function initTables() {
 }
 initTables();
 
-// LAYOUT
+// LAYOUT AVEC DESIGN 100% RESPONSIVE MOBILE
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -139,9 +155,11 @@ const layout = (title, content, req) => {
 
   if (isAuth) {
     if (rolesAdmin.includes(userRole)) {
-      navItems += `<a href="/admin" class="nav-item">⚙️ Panneau de Direction</a>`;
+      navItems += `<a href="/admin/appel" class="nav-item">📝 Prise d'Appel</a>
+                   <a href="/admin" class="nav-item">⚙️ Panneau Direction</a>`;
     } else if (rolesProf.includes(userRole)) {
-      navItems += `<a href="/prof" class="nav-item">👨‍🏫 Espace Professeur</a>`;
+      navItems += `<a href="/admin/appel" class="nav-item">📝 Prise d'Appel</a>
+                   <a href="/prof" class="nav-item">👨‍🏫 Espace Professeur</a>`;
     } else if (userRole === "PARENT") {
       navItems += `<a href="/espace-parent" class="nav-item">👪 Espace Parent</a>`;
     } else if (userRole === "ELEVE") {
@@ -260,13 +278,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .badge-code { font-family: monospace; font-size: .9rem; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; font-weight: 700; }
 .badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
 
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 14px; text-align: center; }
-.calendar-day-head { font-weight: 700; font-size: .75rem; color: var(--muted); text-transform: uppercase; padding: 4px 0; }
-.calendar-cell { padding: 10px 2px; border-radius: 6px; font-weight: 700; font-size: .85rem; background: #f8fafc; border: 1px solid var(--border); }
-.calendar-cell.empty { background: transparent; border: none; }
-.calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
-.calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
-.calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
+.gallery-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); }
+.gallery-body { padding: 12px; }
 
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
@@ -423,6 +438,212 @@ app.get("/", async (req, res) => {
 
     res.send(layout("Tableau de bord", content, req));
   } catch (e) { res.status(500).send("Erreur accueil."); }
+});
+
+// ROUTE PRISE D'APPEL (PRESENCES)
+app.get("/admin/appel", requireStaff, async (req, res) => {
+  try {
+    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
+    if (classes.rows.length === 0) {
+      return res.send(layout("Prise d'Appel", "<section class='card'><h2>Aucune classe</h2><p>Veuillez d'abord ajouter des classes.</p></section>", req));
+    }
+
+    const selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
+    const selectedDate = req.query.date || getTodayDate();
+
+    const [students, presences] = await Promise.all([
+      pool.query("SELECT id, nom, prenom, code_eleve, photo_url FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom ASC, prenom ASC", [selectedClasseId]),
+      pool.query("SELECT eleve_id, statut FROM presences WHERE classe_id=$1 AND date_presence=$2", [selectedClasseId, selectedDate])
+    ]);
+
+    const presenceMap = {};
+    presences.rows.forEach(p => { presenceMap[p.eleve_id] = p.statut; });
+
+    const classOptionsHtml = classes.rows.map(c => `
+      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+    `).join("");
+
+    const rowsHtml = students.rows.map(s => {
+      const currentStatut = presenceMap[s.id] || "PRESENT";
+      const photo = s.photo_url || "https://via.placeholder.com/40";
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+              <div>
+                <b>${h(s.nom)} ${h(s.prenom)}</b>
+                <div style="font-size:.78rem;color:var(--muted)">${h(s.code_eleve)}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <select name="statut_${s.id}" style="padding:6px 10px">
+              <option value="PRESENT" ${currentStatut === "PRESENT" ? "selected" : ""}>✅ Présent</option>
+              <option value="ABSENT" ${currentStatut === "ABSENT" ? "selected" : ""}>❌ Absent</option>
+              <option value="RETARD" ${currentStatut === "RETARD" ? "selected" : ""}>⏳ Retard</option>
+            </select>
+          </td>
+        </tr>`;
+    }).join("") || "<tr><td colspan='2' style='text-align:center;padding:15px'>Aucun élève inscrit dans cette classe.</td></tr>";
+
+    const content = `
+      <section class="card">
+        <h2>📝 Prise d'Appel / Fiche de Présence</h2>
+        <p style="color:var(--muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
+        
+        <form method="get" action="/admin/appel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;background:#f8fafc;padding:12px;border-radius:10px">
+          <div style="flex:1;min-width:180px">
+            <label style="margin-top:0">Classe :</label>
+            <select name="classe_id" onchange="this.form.submit()">${classOptionsHtml}</select>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <label style="margin-top:0">Date :</label>
+            <input type="date" name="date" value="${selectedDate}" onchange="this.form.submit()">
+          </div>
+        </form>
+
+        <form method="post" action="/admin/appel">
+          ${csrfField(req)}
+          <input type="hidden" name="classe_id" value="${selectedClasseId}">
+          <input type="hidden" name="date" value="${selectedDate}">
+
+          <div class="excel-table-container">
+            <table class="excel-table">
+              <thead><tr><th>Élève</th><th>Statut de Présence</th></tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+
+          ${students.rows.length > 0 ? `<button type="submit" class="btn full" style="margin-top:15px">💾 Enregistrer l'Appel du ${dateFr(selectedDate)}</button>` : ""}
+        </form>
+      </section>`;
+
+    res.send(layout("Prise d'Appel", content, req));
+  } catch (e) { res.status(500).send("Erreur appel."); }
+});
+
+app.post("/admin/appel", requireStaff, async (req, res) => {
+  const { classe_id, date } = req.body;
+  try {
+    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
+    for (let s of students.rows) {
+      const statut = req.body[`statut_${s.id}`] || "PRESENT";
+      await pool.query(`
+        INSERT INTO presences (eleve_id, classe_id, date_presence, statut)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (eleve_id, date_presence) DO UPDATE SET statut = EXCLUDED.statut
+      `, [s.id, Number(classe_id), date, statut]);
+    }
+    res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date}`);
+  } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
+});
+
+// ROUTE GALERIE SCOLAIRE
+app.get("/galerie", async (req, res) => {
+  try {
+    const photos = await pool.query("SELECT * FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
+    const isAdmin = req.session.user && rolesAdmin.includes(req.session.user.role);
+
+    const photosHtml = photos.rows.map(p => `
+      <div class="gallery-card">
+        <img src="${h(p.photo_base64)}" class="gallery-img" alt="${h(p.titre)}">
+        <div class="gallery-body">
+          <strong style="color:var(--navy);display:block">${h(p.titre)}</strong>
+          <span style="font-size:.75rem;color:var(--muted)">Publié le ${dateFr(p.date_ajout)}</span>
+          ${isAdmin ? `
+            <form method="post" action="/admin/galerie/supprimer" style="margin-top:8px">
+              ${csrfField(req)}
+              <input type="hidden" name="id" value="${p.id}">
+              <button class="btn danger" onclick="return confirm('Supprimer cette photo ?')">🗑️ Supprimer</button>
+            </form>` : ''}
+        </div>
+      </div>
+    `).join("") || "<p style='color:var(--muted);grid-column:1/-1;text-align:center;padding:20px'>Aucune photo dans la galerie pour le moment.</p>";
+
+    let uploadFormHtml = "";
+    if (isAdmin) {
+      uploadFormHtml = `
+        <section class="card" style="border:2px dashed var(--blue);background:#eff6ff;margin-bottom:20px">
+          <h2 style="margin-bottom:10px">📸 Ajouter une Photo à la Galerie</h2>
+          <form method="post" action="/admin/galerie">
+            ${csrfField(req)}
+            <label>Titre de l'événement / photo</label>
+            <input name="titre" required placeholder="Ex. Fête du Drapeau 2026">
+            
+            <label>Sélectionner la photo :</label>
+            <input type="file" id="galerieInput" accept="image/*" style="display:none">
+            <input type="hidden" name="photo_base64" id="galerieBase64">
+            
+            <button type="button" class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('galerieInput').click()">📁 Choisir une image</button>
+            <button type="submit" id="saveGalerieBtn" class="btn full" style="margin-top:10px;display:none;background:#22c55e">✅ Publier dans la Galerie</button>
+          </form>
+        </section>
+
+        <script>
+          document.getElementById('galerieInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+              const img = new Image();
+              img.src = URL.createObjectURL(file);
+              img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const maxDim = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                  if (width > maxDim) { height *= maxDim / width; width = maxDim; }
+                } else {
+                  if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+                document.getElementById('galerieBase64').value = compressedBase64;
+                document.getElementById('saveGalerieBtn').style.display = 'block';
+              };
+            }
+          });
+        </script>`;
+    }
+
+    const content = `
+      <div class="card">
+        <h2>📸 Galerie Scolaire — LEKOL S&amp;H</h2>
+        <p style="color:var(--muted)">Retrouvez en images les événements et activités de l'établissement.</p>
+      </div>
+      
+      ${uploadFormHtml}
+
+      <div class="gallery-grid">
+        ${photosHtml}
+      </div>`;
+
+    res.send(layout("Galerie Scolaire", content, req));
+  } catch (e) { res.status(500).send("Erreur galerie."); }
+});
+
+app.post("/admin/galerie", requireAdmin, async (req, res) => {
+  const { titre, photo_base64 } = req.body;
+  try {
+    if (photo_base64) {
+      await pool.query("INSERT INTO galerie (titre, photo_base64) VALUES ($1, $2)", [String(titre).trim(), photo_base64]);
+    }
+    res.redirect("/galerie");
+  } catch (e) { res.status(500).send("Erreur publication photo."); }
+});
+
+app.post("/admin/galerie/supprimer", requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  try {
+    await pool.query("DELETE FROM galerie WHERE id=$1", [Number(id)]);
+    res.redirect("/galerie");
+  } catch (e) { res.status(500).send("Erreur suppression photo."); }
 });
 
 // DOSSIER ÉLÈVE
@@ -703,7 +924,7 @@ app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur suppression horaire."); }
 });
 
-// CONNEXION FLEXIBLE
+// CONNEXION
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
   const content = `
@@ -748,17 +969,39 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// PANNEAU DIRECTION (ADMINISTRATEUR) COMPLET AVEC CRÉATION DE COMPTES STAFF ET ANNONCES
+// PANNEAU DIRECTION COMPLET AVEC LISTE DES ÉLÈVES ET CODES UNIQUES
 app.get("/admin", requireAdmin, async (req, res) => {
   try {
     const [classes, students, users] = await Promise.all([
       pool.query("SELECT id, nom FROM classes ORDER BY id ASC").catch(() => ({ rows: [] })),
-      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] })),
+      pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] })),
       pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
     ]);
 
     const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
     const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.code_eleve)})</option>`).join("");
+
+    const studentRows = students.rows.map(s => {
+      const photo = s.photo_url || "https://via.placeholder.com/36";
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+              <b>${h(s.nom)} ${h(s.prenom)}</b>
+            </div>
+          </td>
+          <td><b>${h(s.nom_classe || "Non assignée")}</b></td>
+          <td><span class="excel-badge" style="font-family:monospace;font-size:.85rem">${h(s.code_eleve)}</span></td>
+          <td>
+            <form method="post" action="/admin/eleve/supprimer" style="display:inline">
+              ${csrfField(req)}
+              <input type="hidden" name="id" value="${s.id}">
+              <button class="btn danger" onclick="return confirm('Supprimer cet élève ?')">🗑️ Supprimer</button>
+            </form>
+          </td>
+        </tr>`;
+    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève inscrit.</td></tr>";
 
     const staffRows = users.rows.map(u => `
       <tr>
@@ -781,7 +1024,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
           <label>Titre du Communiqué</label>
           <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
           <label>Contenu du Message</label>
-          <textarea name="contenu" rows="3" required placeholder="Détails du message à transmettre..."></textarea>
+          <textarea name="contenu" rows="3" required placeholder="Détails du message..."></textarea>
           <button style="margin-top:12px" class="btn" type="submit">Publier l'Annonce</button>
         </form>
       </section>
@@ -803,7 +1046,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
               <option value="PARENT">Parent d'Élève</option>
             </select>
             <label>E-mail ou Identifiant de connexion</label>
-            <input name="email" required placeholder="Ex. direction@lekol.com ou nom_admin">
+            <input name="email" required placeholder="Ex. direction@lekol.com">
             <label>Mot de passe</label>
             <input type="password" name="password" required placeholder="••••••••">
             <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Staff</button>
@@ -849,7 +1092,18 @@ app.get("/admin", requireAdmin, async (req, res) => {
         </form>
       </section>
 
-      <!-- LISTE DES COMPTES DIRECTION / PROFS EXISTANCE -->
+      <!-- LISTE DES ÉLÈVES AVEC CODES UNIQUES -->
+      <section class="card">
+        <h2>🎓 Liste des Élèves Inscrits &amp; Codes Uniques</h2>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead><tr><th>Élève</th><th>Classe</th><th>Code Élève Unique</th><th>Action</th></tr></thead>
+            <tbody>${studentRows}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- LISTE DU STAFF -->
       <section class="card">
         <h2>👥 Équipe Administrative &amp; Enseignants</h2>
         <div class="excel-table-container">
@@ -864,7 +1118,6 @@ app.get("/admin", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur admin."); }
 });
 
-// ROUTE CRÉATION D'UTILISATEUR (ADMIN/PROF/PARENT)
 app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
   const { nom, prenom, role, email, password } = req.body;
   try {
@@ -893,6 +1146,14 @@ app.post("/admin/eleve", requireAdmin, async (req, res) => {
     await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
     res.redirect("/admin");
   } catch (e) { res.status(500).send("Erreur élève."); }
+});
+
+app.post("/admin/eleve/supprimer", requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  try {
+    await pool.query("DELETE FROM utilisateurs WHERE id=$1 AND role='ELEVE'", [Number(id)]);
+    res.redirect("/admin");
+  } catch (e) { res.status(500).send("Erreur suppression élève."); }
 });
 
 app.post("/admin/note", requireStaff, async (req, res) => {
