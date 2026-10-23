@@ -226,7 +226,7 @@ header.topbar { background: #fff; border-bottom: 1px solid var(--border); paddin
 
 main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; min-width: 0; }
 
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
 .tile:hover { transform: translateY(-2px); border-color: var(--blue); }
 .tile-icon { font-size: 1.8rem; width: 46px; height: 46px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: var(--blue); }
@@ -413,7 +413,7 @@ app.get("/", async (req, res) => {
       tilesHtml = `
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'Appel</div><div class="tile-desc">Faire l'appel par classe</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Éditer les Horaires</div><div class="tile-desc">Gérer les emplois du temps</div></a>
-        <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Comptes, photos et notes</div></a>`;
+        <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Espaces de gestion spécialisés</div></a>`;
     } else if (rolesProf.includes(role)) {
       tilesHtml = `
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Faire l'Appel</div><div class="tile-desc">Présences du jour</div></a>
@@ -454,103 +454,400 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE PRISE D'APPEL
-app.get("/admin/appel", requireStaff, async (req, res) => {
+// PANNEAU DIRECTION (MENU PRINCIPAL VERS LES SOUS-PAGES)
+app.get("/admin", requireAdmin, async (req, res) => {
+  const content = `
+    <div class="card">
+      <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
+      <p style="color:var(--muted)">Sélectionnez la sous-page administrative de votre choix :</p>
+    </div>
+
+    <div class="tile-grid">
+      <a href="/admin/classes" class="tile">
+        <div class="tile-icon">🏫</div>
+        <div class="tile-title">Gestion des Classes</div>
+        <div class="tile-desc">Ajouter, voir ou supprimer des classes</div>
+      </a>
+
+      <a href="/admin/eleves" class="tile">
+        <div class="tile-icon">🎓</div>
+        <div class="tile-title">Inscriptions &amp; Élèves</div>
+        <div class="tile-desc">Inscrire et filtrer les élèves par classe</div>
+      </a>
+
+      <a href="/admin/staff" class="tile">
+        <div class="tile-icon">👥</div>
+        <div class="tile-title">Gestion du Staff</div>
+        <div class="tile-desc">Comptes Direction, Professeurs et Parents</div>
+      </a>
+
+      <a href="/admin/annonces" class="tile">
+        <div class="tile-icon">📢</div>
+        <div class="tile-title">Annonces &amp; Communiqués</div>
+        <div class="tile-desc">Publier des annonces officielles</div>
+      </a>
+
+      <a href="/admin/notes" class="tile">
+        <div class="tile-icon">📊</div>
+        <div class="tile-title">Saisie des Notes</div>
+        <div class="tile-desc">Enregistrer les notes et devoirs</div>
+      </a>
+
+      <a href="/admin/appel" class="tile">
+        <div class="tile-icon">📝</div>
+        <div class="tile-title">Prise d'Appel</div>
+        <div class="tile-desc">Fiche de présence par classe</div>
+      </a>
+    </div>`;
+
+  res.send(layout("Panneau Direction", content, req));
+});
+
+// 1. SOUS-PAGE : GESTION DES CLASSES
+app.get("/admin/classes", requireAdmin, async (req, res) => {
   try {
-    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
-    if (classes.rows.length === 0) {
-      return res.send(layout("Prise d'Appel", "<section class='card'><h2>Aucune classe</h2><p>Veuillez d'abord ajouter des classes.</p></section>", req));
+    const classesWithCount = await pool.query("SELECT c.id, c.nom, c.niveau, COUNT(u.id) AS total_eleves FROM classes c LEFT JOIN utilisateurs u ON u.classe_id=c.id AND u.role='ELEVE' GROUP BY c.id ORDER BY c.nom ASC").catch(() => ({ rows: [] }));
+
+    const classRows = classesWithCount.rows.map(c => `
+      <tr>
+        <td><b>${h(c.nom)}</b></td>
+        <td><span class="excel-badge">${h(c.niveau)}</span></td>
+        <td><strong>${c.total_eleves}</strong> élève(s)</td>
+        <td>
+          <form method="post" action="/admin/classe/supprimer" style="display:inline">
+            ${csrfField(req)}
+            <input type="hidden" name="id" value="${c.id}">
+            <button class="btn danger" onclick="return confirm('Supprimer cette classe ?')">🗑️ Supprimer</button>
+          </form>
+        </td>
+      </tr>
+    `).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucune classe créée.</td></tr>";
+
+    const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
+      <section class="card" style="border:2px solid var(--blue);background:#eff6ff">
+        <h2>🏫 Ajouter une Nouvelle Classe</h2>
+        <form method="post" action="/admin/classe">${csrfField(req)}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
+            <div>
+              <label>Nom de la classe</label>
+              <input name="nom" required placeholder="Ex. 1ère Année A, NS II...">
+            </div>
+            <div>
+              <label>Niveau scolaire</label>
+              <select name="niveau">
+                <option value="Maternelle">Maternelle / Kindergarten</option>
+                <option value="Fondamental" selected>Fondamental</option>
+                <option value="Nouveau Secondaire">Nouveau Secondaire</option>
+              </select>
+            </div>
+          </div>
+          <button style="margin-top:12px" class="btn" type="submit">➕ Créer la Classe</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>📋 Classes Officiellement Ouvertes (${classesWithCount.rows.length})</h2>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead><tr><th>Nom de la Classe</th><th>Niveau</th><th>Total Élèves</th><th>Action</th></tr></thead>
+            <tbody>${classRows}</tbody>
+          </table>
+        </div>
+      </section>`;
+
+    res.send(layout("Gestion des Classes", content, req));
+  } catch (e) { res.status(500).send("Erreur sous-page classes."); }
+});
+
+// 2. SOUS-PAGE : ÉLÈVES & INSCRIPTIONS
+app.get("/admin/eleves", requireAdmin, async (req, res) => {
+  try {
+    const selectedClasseFilter = req.query.filter_classe_id ? Number(req.query.filter_classe_id) : null;
+
+    let studentQuery = "SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE'";
+    const studentParams = [];
+
+    if (selectedClasseFilter) {
+      studentQuery += " AND u.classe_id=$1";
+      studentParams.push(selectedClasseFilter);
     }
+    studentQuery += " ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
 
-    const selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
-    const selectedDate = req.query.date || getTodayDate();
-
-    const [students, presences] = await Promise.all([
-      pool.query("SELECT id, nom, prenom, code_eleve, photo_url FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1 ORDER BY nom ASC, prenom ASC", [selectedClasseId]),
-      pool.query("SELECT eleve_id, statut FROM presences WHERE classe_id=$1 AND date_presence=$2", [selectedClasseId, selectedDate])
+    const [classes, students] = await Promise.all([
+      pool.query("SELECT id, nom FROM classes ORDER BY nom ASC").catch(() => ({ rows: [] })),
+      pool.query(studentQuery, studentParams).catch(() => ({ rows: [] }))
     ]);
 
-    const presenceMap = {};
-    presences.rows.forEach(p => { presenceMap[p.eleve_id] = p.statut; });
-
-    const classOptionsHtml = classes.rows.map(c => `
-      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+    const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
+    const filterClassOpts = `<option value="">Toutes les classes</option>` + classes.rows.map(c => `
+      <option value="${c.id}" ${c.id === selectedClasseFilter ? "selected" : ""}>${h(c.nom)}</option>
     `).join("");
 
-    const rowsHtml = students.rows.map(s => {
-      const currentStatut = presenceMap[s.id] || "PRESENT";
-      const photo = s.photo_url || "https://via.placeholder.com/40";
+    const studentRows = students.rows.map(s => {
+      const photo = s.photo_url || "https://via.placeholder.com/36";
       return `
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
-              <div>
-                <b>${h(s.nom)} ${h(s.prenom)}</b>
-                <div style="font-size:.78rem;color:var(--muted)">${h(s.code_eleve)}</div>
-              </div>
+              <b>${h(s.nom)} ${h(s.prenom)}</b>
             </div>
           </td>
+          <td><b>${h(s.nom_classe || "Non assignée")}</b></td>
+          <td><span class="excel-badge" style="font-family:monospace;font-size:.85rem">${h(s.code_eleve)}</span></td>
           <td>
-            <select name="statut_${s.id}" style="padding:6px 10px">
-              <option value="PRESENT" ${currentStatut === "PRESENT" ? "selected" : ""}>✅ Présent</option>
-              <option value="ABSENT" ${currentStatut === "ABSENT" ? "selected" : ""}>❌ Absent</option>
-              <option value="RETARD" ${currentStatut === "RETARD" ? "selected" : ""}>⏳ Retard</option>
-            </select>
+            <form method="post" action="/admin/eleve/supprimer" style="display:inline">
+              ${csrfField(req)}
+              <input type="hidden" name="id" value="${s.id}">
+              <button class="btn danger" onclick="return confirm('Supprimer cet élève ?')">🗑️ Supprimer</button>
+            </form>
           </td>
         </tr>`;
-    }).join("") || "<tr><td colspan='2' style='text-align:center;padding:15px'>Aucun élève inscrit dans cette classe.</td></tr>";
+    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève trouvé.</td></tr>";
 
     const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
       <section class="card">
-        <h2>📝 Prise d'Appel / Fiche de Présence</h2>
-        <p style="color:var(--muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
-        
-        <form method="get" action="/admin/appel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;background:#f8fafc;padding:12px;border-radius:10px">
-          <div style="flex:1;min-width:180px">
-            <label style="margin-top:0">Classe :</label>
-            <select name="classe_id" onchange="this.form.submit()">${classOptionsHtml}</select>
+        <h2>➕ Inscrire un Nouvel Élève</h2>
+        <form method="post" action="/admin/eleve">${csrfField(req)}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
+            <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
           </div>
-          <div style="flex:1;min-width:180px">
-            <label style="margin-top:0">Date :</label>
-            <input type="date" name="date" value="${selectedDate}" onchange="this.form.submit()">
-          </div>
+          <label>Classe</label><select name="classe_id" required><option value="">Choisir la classe</option>${classOpts}</select>
+          <label>Mot de passe</label><input type="password" name="password" value="ecole2026" required>
+          <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Élève</button>
         </form>
+      </section>
 
-        <form method="post" action="/admin/appel">
-          ${csrfField(req)}
-          <input type="hidden" name="classe_id" value="${selectedClasseId}">
-          <input type="hidden" name="date" value="${selectedDate}">
-
-          <div class="excel-table-container">
-            <table class="excel-table">
-              <thead><tr><th>Élève</th><th>Statut de Présence</th></tr></thead>
-              <tbody>${rowsHtml}</tbody>
-            </table>
+      <section class="card">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
+          <div>
+            <h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2>
           </div>
+          <div style="min-width:200px">
+            <select style="padding:8px 12px;font-weight:bold" onchange="window.location.href='/admin/eleves?filter_classe_id=' + this.value">
+              ${filterClassOpts}
+            </select>
+          </div>
+        </div>
 
-          ${students.rows.length > 0 ? `<button type="submit" class="btn full" style="margin-top:15px">💾 Enregistrer l'Appel du ${dateFr(selectedDate)}</button>` : ""}
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead><tr><th>Élève</th><th>Classe</th><th>Code Élève Unique</th><th>Action</th></tr></thead>
+            <tbody>${studentRows}</tbody>
+          </table>
+        </div>
+      </section>`;
+
+    res.send(layout("Gestion des Élèves", content, req));
+  } catch (e) { res.status(500).send("Erreur sous-page élèves."); }
+});
+
+// 3. SOUS-PAGE : GESTION DU STAFF (ADMINS, PROFS, PARENTS)
+app.get("/admin/staff", requireAdmin, async (req, res) => {
+  try {
+    const users = await pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }));
+
+    const staffRows = users.rows.map(u => `
+      <tr>
+        <td><b>${h(u.nom)} ${h(u.prenom)}</b></td>
+        <td><span class="excel-badge">${h(u.role)}</span></td>
+        <td>${h(u.email || "Non renseigné")}</td>
+      </tr>
+    `).join("") || "<tr><td colspan='3' style='text-align:center'>Aucun membre créé.</td></tr>";
+
+    const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
+      <section class="card" style="border:2px solid var(--blue)">
+        <h2>👑 Créer un Compte Staff / Admin / Prof</h2>
+        <form method="post" action="/admin/utilisateur">${csrfField(req)}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
+            <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
+          </div>
+          <label>Rôle du Compte</label>
+          <select name="role" required>
+            <option value="ADMIN">Administrateur (Direction)</option>
+            <option value="PROF">Professeur / Enseignant</option>
+            <option value="TITULAIRE">Professeur Titulaire</option>
+            <option value="PARENT">Parent d'Élève</option>
+          </select>
+          <label>E-mail ou Identifiant de connexion</label>
+          <input name="email" required placeholder="Ex. direction@lekol.com">
+          <label>Mot de passe</label>
+          <input type="password" name="password" required placeholder="••••••••">
+          <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Staff</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>👥 Équipe Administrative &amp; Enseignants (${users.rows.length})</h2>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead><tr><th>Nom &amp; Prénom</th><th>Rôle</th><th>Identifiant / E-mail</th></tr></thead>
+            <tbody>${staffRows}</tbody>
+          </table>
+        </div>
+      </section>`;
+
+    res.send(layout("Gestion du Staff", content, req));
+  } catch (e) { res.status(500).send("Erreur sous-page staff."); }
+});
+
+// 4. SOUS-PAGE : ANNONCES
+app.get("/admin/annonces", requireAdmin, async (req, res) => {
+  try {
+    const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC").catch(() => ({ rows: [] }));
+
+    const annoncesHtml = annonces.rows.map(a => `
+      <div style="border-left:4px solid var(--blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
+        <strong style="color:var(--navy);font-size:1rem;display:block">${h(a.titre)}</strong>
+        <span style="font-size:.78rem;color:var(--muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
+        <p style="margin-top:6px;font-size:.9rem;color:#334155">${h(a.contenu)}</p>
+      </div>
+    `).join("") || "<p style='color:var(--muted)'>Aucune annonce publiée.</p>";
+
+    const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
+      <section class="card">
+        <h2>📢 Publier une Annonce Officielle</h2>
+        <form method="post" action="/admin/annonce">${csrfField(req)}
+          <label>Titre du Communiqué</label>
+          <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
+          <label>Contenu du Message</label>
+          <textarea name="contenu" rows="4" required placeholder="Détails du message..."></textarea>
+          <button style="margin-top:12px" class="btn full" type="submit">Publier l'Annonce</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>📋 Historique des Communiqués</h2>
+        ${annoncesHtml}
+      </section>`;
+
+    res.send(layout("Gestion des Annonces", content, req));
+  } catch (e) { res.status(500).send("Erreur sous-page annonces."); }
+});
+
+// 5. SOUS-PAGE : SAISIE DES NOTES
+app.get("/admin/notes", requireStaff, async (req, res) => {
+  try {
+    const students = await pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY c.nom ASC, u.nom ASC").catch(() => ({ rows: [] }));
+    const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.nom_classe || "Sans classe")})</option>`).join("");
+
+    const content = `
+      <div style="margin-bottom:15px">
+        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
+      </div>
+
+      <section class="card">
+        <h2>📊 Saisir Note / Devoir</h2>
+        <form method="post" action="/admin/note">${csrfField(req)}
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
+            <div><label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select></div>
+            <div>
+              <label>Type d'Évaluation</label>
+              <select name="type_eval" required>
+                <option value="Devoir Maison">Devoir Maison</option>
+                <option value="Exercice en Classe">Exercice en Classe</option>
+                <option value="Contrôle">Contrôle</option>
+                <option value="Examen">Examen</option>
+              </select>
+            </div>
+            <div><label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques"></div>
+            <div><label>Note obtenue</label><input type="number" step="0.5" name="note" required placeholder="8.5"></div>
+            <div><label>Sur combien ?</label><input type="number" name="total_max" value="100" required placeholder="100 ou 10"></div>
+            <div><label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle"></div>
+          </div>
+          <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
         </form>
       </section>`;
 
-    res.send(layout("Prise d'Appel", content, req));
-  } catch (e) { res.status(500).send("Erreur appel."); }
+    res.send(layout("Saisie des Notes", content, req));
+  } catch (e) { res.status(500).send("Erreur sous-page notes."); }
 });
 
-app.post("/admin/appel", requireStaff, async (req, res) => {
-  const { classe_id, date } = req.body;
+// ACTION DU FORMULAIRE : GESTION DES CLASSES
+app.post("/admin/classe", requireAdmin, async (req, res) => {
+  const { nom, niveau } = req.body;
   try {
-    const students = await pool.query("SELECT id FROM utilisateurs WHERE role='ELEVE' AND classe_id=$1", [Number(classe_id)]);
-    for (let s of students.rows) {
-      const statut = req.body[`statut_${s.id}`] || "PRESENT";
-      await pool.query(`
-        INSERT INTO presences (eleve_id, classe_id, date_presence, statut)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (eleve_id, date_presence) DO UPDATE SET statut = EXCLUDED.statut
-      `, [s.id, Number(classe_id), date, statut]);
+    if (nom) {
+      await pool.query("INSERT INTO classes (nom, niveau) VALUES ($1, $2)", [String(nom).trim(), String(niveau || "Fondamental")]);
     }
-    res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date}`);
-  } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
+    res.redirect("/admin/classes");
+  } catch (e) { res.status(500).send("Erreur ajout classe."); }
+});
+
+app.post("/admin/classe/supprimer", requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  try {
+    await pool.query("DELETE FROM classes WHERE id=$1", [Number(id)]);
+    res.redirect("/admin/classes");
+  } catch (e) { res.status(500).send("Erreur suppression classe."); }
+});
+
+// ACTION DU FORMULAIRE : STAFF
+app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
+  const { nom, prenom, role, email, password } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query(
+      "INSERT INTO utilisateurs (nom, prenom, role, email, mot_de_passe) VALUES ($1, $2, $3, $4, $5)",
+      [String(nom).trim(), String(prenom).trim(), String(role), String(email).trim(), hash]
+    );
+    res.redirect("/admin/staff");
+  } catch (e) { res.status(500).send("Erreur création utilisateur."); }
+});
+
+// ACTION DU FORMULAIRE : ANNONCES
+app.post("/admin/annonce", requireAdmin, async (req, res) => {
+  const { titre, contenu } = req.body;
+  try {
+    await pool.query("INSERT INTO annonces (titre, contenu, auteur) VALUES ($1, $2, $3)", [String(titre).trim(), String(contenu).trim(), "Direction"]);
+    res.redirect("/admin/annonces");
+  } catch (e) { res.status(500).send("Erreur annonce."); }
+});
+
+// ACTION DU FORMULAIRE : ÉLÈVES
+app.post("/admin/eleve", requireAdmin, async (req, res) => {
+  const { nom, prenom, password, classe_id } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const code = "S&H-" + crypto.randomInt(1000, 10000);
+    await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
+    res.redirect("/admin/eleves");
+  } catch (e) { res.status(500).send("Erreur élève."); }
+});
+
+app.post("/admin/eleve/supprimer", requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  try {
+    await pool.query("DELETE FROM utilisateurs WHERE id=$1 AND role='ELEVE'", [Number(id)]);
+    res.redirect("/admin/eleves");
+  } catch (e) { res.status(500).send("Erreur suppression élève."); }
+});
+
+// ACTION DU FORMULAIRE : NOTES
+app.post("/admin/note", requireStaff, async (req, res) => {
+  const { eleve_id, matiere, note, total_max, type_eval, periode } = req.body;
+  try {
+    await pool.query("INSERT INTO notes (eleve_id, matiere, note, total_max, type_eval, periode) VALUES ($1,$2,$3,$4,$5,$6)", [Number(eleve_id), String(matiere).trim(), Number(note), Number(total_max) || 100, String(type_eval), String(periode).trim()]);
+    res.redirect(req.session.user.role === "PROF" ? "/prof" : "/admin/notes");
+  } catch (e) { res.status(500).send("Erreur note."); }
 });
 
 // ROUTE GALERIE SCOLAIRE CORRIGÉE
@@ -947,228 +1244,6 @@ app.post("/connexion", loginLimiter, async (req, res) => {
 
 app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
-});
-
-// PANNEAU DIRECTION COMPLET AVEC CLASSEMENT DES ÉLÈVES PAR CLASSE
-app.get("/admin", requireAdmin, async (req, res) => {
-  try {
-    const selectedClasseFilter = req.query.filter_classe_id ? Number(req.query.filter_classe_id) : null;
-
-    let studentQuery = "SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE'";
-    const studentParams = [];
-
-    if (selectedClasseFilter) {
-      studentQuery += " AND u.classe_id=$1";
-      studentParams.push(selectedClasseFilter);
-    }
-    studentQuery += " ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
-
-    const [classes, students, users] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY nom ASC").catch(() => ({ rows: [] })),
-      pool.query(studentQuery, studentParams).catch(() => ({ rows: [] })),
-      pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }))
-    ]);
-
-    const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
-    
-    const filterClassOpts = `<option value="">Toutes les classes</option>` + classes.rows.map(c => `
-      <option value="${c.id}" ${c.id === selectedClasseFilter ? "selected" : ""}>${h(c.nom)}</option>
-    `).join("");
-
-    const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.code_eleve)})</option>`).join("");
-
-    const studentRows = students.rows.map(s => {
-      const photo = s.photo_url || "https://via.placeholder.com/36";
-      return `
-        <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:10px">
-              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
-              <b>${h(s.nom)} ${h(s.prenom)}</b>
-            </div>
-          </td>
-          <td><b>${h(s.nom_classe || "Non assignée")}</b></td>
-          <td><span class="excel-badge" style="font-family:monospace;font-size:.85rem">${h(s.code_eleve)}</span></td>
-          <td>
-            <form method="post" action="/admin/eleve/supprimer" style="display:inline">
-              ${csrfField(req)}
-              <input type="hidden" name="id" value="${s.id}">
-              <button class="btn danger" onclick="return confirm('Supprimer cet élève ?')">🗑️ Supprimer</button>
-            </form>
-          </td>
-        </tr>`;
-    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève trouvé pour cette sélection.</td></tr>";
-
-    const staffRows = users.rows.map(u => `
-      <tr>
-        <td><b>${h(u.nom)} ${h(u.prenom)}</b></td>
-        <td><span class="excel-badge">${h(u.role)}</span></td>
-        <td>${h(u.email || "Non renseigné")}</td>
-      </tr>
-    `).join("") || "<tr><td colspan='3' style='text-align:center'>Aucun autre membre de la direction créé.</td></tr>";
-
-    const content = `
-      <div class="card">
-        <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Gestion globale : Annonces, Inscriptions, Comptes Admins/Profs, Notes.</p>
-      </div>
-
-      <!-- PUBLIER UNE ANNONCE -->
-      <section class="card">
-        <h2>📢 Publier une Annonce Officielle</h2>
-        <form method="post" action="/admin/annonce">${csrfField(req)}
-          <label>Titre du Communiqué</label>
-          <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
-          <label>Contenu du Message</label>
-          <textarea name="contenu" rows="3" required placeholder="Détails du message..."></textarea>
-          <button style="margin-top:12px" class="btn" type="submit">Publier l'Annonce</button>
-        </form>
-      </section>
-
-      <div class="grid">
-        <!-- CRÉER UN COMPTE ADMIN / PROF / PARENT -->
-        <section class="card" style="border:2px solid var(--blue)">
-          <h2>👑 Créer un Compte Staff / Admin</h2>
-          <form method="post" action="/admin/utilisateur">${csrfField(req)}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
-              <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
-            </div>
-            <label>Rôle du Compte</label>
-            <select name="role" required>
-              <option value="ADMIN">Administrateur (Direction)</option>
-              <option value="PROF">Professeur / Enseignant</option>
-              <option value="TITULAIRE">Professeur Titulaire</option>
-              <option value="PARENT">Parent d'Élève</option>
-            </select>
-            <label>E-mail ou Identifiant de connexion</label>
-            <input name="email" required placeholder="Ex. direction@lekol.com">
-            <label>Mot de passe</label>
-            <input type="password" name="password" required placeholder="••••••••">
-            <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Staff</button>
-          </form>
-        </section>
-
-        <!-- INSCRIRE UN ÉLÈVE -->
-        <section class="card">
-          <h2>➕ Inscrire un Élève</h2>
-          <form method="post" action="/admin/eleve">${csrfField(req)}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
-              <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
-            </div>
-            <label>Classe</label><select name="classe_id" required><option value="">Choisir la classe</option>${classOpts}</select>
-            <label>Mot de passe</label><input type="password" name="password" value="ecole2026" required>
-            <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Élève</button>
-          </form>
-        </section>
-      </div>
-
-      <!-- SAISIR UNE NOTE -->
-      <section class="card">
-        <h2>📊 Saisir Note / Devoir</h2>
-        <form method="post" action="/admin/note">${csrfField(req)}
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
-            <div><label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select></div>
-            <div>
-              <label>Type d'Évaluation</label>
-              <select name="type_eval" required>
-                <option value="Devoir Maison">Devoir Maison</option>
-                <option value="Exercice en Classe">Exercice en Classe</option>
-                <option value="Contrôle">Contrôle</option>
-                <option value="Examen">Examen</option>
-              </select>
-            </div>
-            <div><label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques"></div>
-            <div><label>Note obtenue</label><input type="number" step="0.5" name="note" required placeholder="8.5"></div>
-            <div><label>Sur combien ?</label><input type="number" name="total_max" value="100" required placeholder="100 ou 10"></div>
-            <div><label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle"></div>
-          </div>
-          <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
-        </form>
-      </section>
-
-      <!-- LISTE DES ÉLÈVES ET CODES UNIQUES TRIÉS PAR CLASSE -->
-      <section class="card">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
-          <div>
-            <h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2>
-            <p style="color:var(--muted);font-size:.85rem;margin:2px 0 0 0">Filtré par classe pour une meilleure organisation</p>
-          </div>
-          <div style="min-width:200px">
-            <select style="padding:8px 12px;font-weight:bold" onchange="window.location.href='/admin?filter_classe_id=' + this.value">
-              ${filterClassOpts}
-            </select>
-          </div>
-        </div>
-
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead><tr><th>Élève</th><th>Classe</th><th>Code Élève Unique</th><th>Action</th></tr></thead>
-            <tbody>${studentRows}</tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- LISTE DU STAFF -->
-      <section class="card">
-        <h2>👥 Équipe Administrative &amp; Enseignants</h2>
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead><tr><th>Nom &amp; Prénom</th><th>Rôle</th><th>Identifiant / E-mail</th></tr></thead>
-            <tbody>${staffRows}</tbody>
-          </table>
-        </div>
-      </section>`;
-
-    res.send(layout("Administration", content, req));
-  } catch (e) { res.status(500).send("Erreur admin."); }
-});
-
-app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
-  const { nom, prenom, role, email, password } = req.body;
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    await pool.query(
-      "INSERT INTO utilisateurs (nom, prenom, role, email, mot_de_passe) VALUES ($1, $2, $3, $4, $5)",
-      [String(nom).trim(), String(prenom).trim(), String(role), String(email).trim(), hash]
-    );
-    res.redirect("/admin");
-  } catch (e) { res.status(500).send("Erreur création utilisateur."); }
-});
-
-app.post("/admin/annonce", requireAdmin, async (req, res) => {
-  const { titre, contenu } = req.body;
-  try {
-    await pool.query("INSERT INTO annonces (titre, contenu, auteur) VALUES ($1, $2, $3)", [String(titre).trim(), String(contenu).trim(), "Direction"]);
-    res.redirect("/");
-  } catch (e) { res.status(500).send("Erreur annonce."); }
-});
-
-app.post("/admin/eleve", requireAdmin, async (req, res) => {
-  const { nom, prenom, password, classe_id } = req.body;
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    const code = "S&H-" + crypto.randomInt(1000, 10000);
-    await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
-    res.redirect("/admin");
-  } catch (e) { res.status(500).send("Erreur élève."); }
-});
-
-app.post("/admin/eleve/supprimer", requireAdmin, async (req, res) => {
-  const { id } = req.body;
-  try {
-    await pool.query("DELETE FROM utilisateurs WHERE id=$1 AND role='ELEVE'", [Number(id)]);
-    res.redirect("/admin");
-  } catch (e) { res.status(500).send("Erreur suppression élève."); }
-});
-
-app.post("/admin/note", requireStaff, async (req, res) => {
-  const { eleve_id, matiere, note, total_max, type_eval, periode } = req.body;
-  try {
-    await pool.query("INSERT INTO notes (eleve_id, matiere, note, total_max, type_eval, periode) VALUES ($1,$2,$3,$4,$5,$6)", [Number(eleve_id), String(matiere).trim(), Number(note), Number(total_max) || 100, String(type_eval), String(periode).trim()]);
-    res.redirect(req.session.user.role === "PROF" ? "/prof" : "/admin");
-  } catch (e) { res.status(500).send("Erreur note."); }
 });
 
 // CALENDRIER
