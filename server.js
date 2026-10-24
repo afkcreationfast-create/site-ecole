@@ -447,7 +447,7 @@ app.get("/", async (req, res) => {
         <a href="/prof" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Notes &amp; Devoirs</div><div class="tile-desc">Saisir les évaluations</div></a>`;
     } else if (role === "ELEVE") {
       tilesHtml = `
-        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Mes Devoirs &amp; Leçons</div><div class="tile-desc">Travail à faire pour demain &amp; plus tard</div></a>
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Mes Devoirs &amp; Leçons</div><div class="tile-desc">Travail à faire pour ma classe</div></a>
         <a href="/espace-eleve" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Mon Dossier &amp; Badge</div><div class="tile-desc">Notes, bulletin et carte d'étudiant</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Mon Emploi du Temps</div><div class="tile-desc">Horaire officiel de ma classe</div></a>`;
     } else if (role === "PARENT") {
@@ -483,25 +483,28 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE DEVOIRS & LEÇONS (CAHIER DE TEXTES)
+// ROUTE DEVOIRS & LEÇONS (STRICTEMENT SÉCURISÉE)
 app.get("/devoirs", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
     const userRole = isAuth ? req.session.user.role : null;
     const isStaff = rolesStaff.includes(userRole);
+    const isEleve = userRole === "ELEVE";
 
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     if (classes.rows.length === 0) {
       return res.send(layout("Devoirs", "<section class='card'><h2>Aucune classe</h2><p>Ajoutez des classes dans l'administration.</p></section>", req));
     }
 
-    let selectedClasseId = classes.rows[0].id;
-    if (isStaff && req.query.classe_id) {
-      selectedClasseId = Number(req.query.classe_id);
-    } else if (isAuth && req.session.user.classe_id) {
+    let selectedClasseId;
+
+    // RESTRICTION STRICTE : L'ÉLÈVE EST STRICTEMENT BLOQUÉ SUR SA PRATIQUE DE CLASSE
+    if (isEleve) {
       selectedClasseId = req.session.user.classe_id;
-    } else if (req.query.classe_id) {
+    } else if (isStaff && req.query.classe_id) {
       selectedClasseId = Number(req.query.classe_id);
+    } else {
+      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
     }
 
     const [selectedClasse, devoirsRes] = await Promise.all([
@@ -509,11 +512,23 @@ app.get("/devoirs", async (req, res) => {
       pool.query("SELECT d.*, TO_CHAR(d.date_pour, 'YYYY-MM-DD') as date_pour_fmt, TO_CHAR(COALESCE(d.date_pub, CURRENT_DATE), 'YYYY-MM-DD') as date_pub_fmt FROM devoirs d WHERE d.classe_id=$1 ORDER BY d.date_pour ASC", [selectedClasseId])
     ]);
 
-    const classeNom = selectedClasse.rows[0]?.nom || "Classe";
+    const classeNom = selectedClasse.rows[0]?.nom || "Ma Classe";
 
-    const classOptionsHtml = classes.rows.map(c => `
-      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
-    `).join("");
+    let selectorHtml = "";
+    // SEULS LES STAFF / PROFESSEURS / ADMINS PEUVENT SÉLECTIONNER DES CLASSES
+    if (isStaff) {
+      const classOptionsHtml = classes.rows.map(c => `
+        <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+      `).join("");
+
+      selectorHtml = `
+        <div style="min-width:200px">
+          <label style="margin-top:0">Sélectionner une classe :</label>
+          <select onchange="window.location.href='/devoirs?classe_id=' + this.value">
+            ${classOptionsHtml}
+          </select>
+        </div>`;
+    }
 
     const today = getTodayDate();
 
@@ -607,14 +622,9 @@ app.get("/devoirs", async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px">
           <div>
             <h2>📖 Devoirs &amp; Leçons (Cahier de Textes)</h2>
-            <p style="color:var(--muted)">Devoirs et révisions à faire pour : <b style="color:var(--blue)">${h(classeNom)}</b></p>
+            <p style="color:var(--muted)">Devoirs et révisions de la classe : <b style="color:var(--blue)">${h(classeNom)}</b></p>
           </div>
-          <div style="min-width:200px">
-            <label style="margin-top:0">Sélectionner une classe :</label>
-            <select onchange="window.location.href='/devoirs?classe_id=' + this.value">
-              ${classOptionsHtml}
-            </select>
-          </div>
+          ${selectorHtml}
         </div>
       </div>
 
@@ -1360,12 +1370,13 @@ app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
 });
 
-// HORAIRE ET EMPLOI DU TEMPS
+// HORAIRE ET EMPLOI DU TEMPS (STRICTEMENT SÉCURISÉ)
 app.get("/horaire", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
     const userRole = isAuth ? req.session.user.role : null;
     const isAdmin = rolesAdmin.includes(userRole);
+    const isEleve = userRole === "ELEVE";
 
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     
@@ -1373,11 +1384,14 @@ app.get("/horaire", async (req, res) => {
       return res.send(layout("Horaire", "<section class='card'><h2>Aucune classe configurée</h2><p>Veuillez d'abord créer des classes dans l'administration.</p></section>", req));
     }
 
-    let selectedClasseId = classes.rows[0].id;
-    if (isAdmin && req.query.classe_id) {
-      selectedClasseId = Number(req.query.classe_id);
-    } else if (isAuth && req.session.user.classe_id) {
+    let selectedClasseId;
+
+    if (isEleve) {
       selectedClasseId = req.session.user.classe_id;
+    } else if (isAdmin && req.query.classe_id) {
+      selectedClasseId = Number(req.query.classe_id);
+    } else {
+      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
     }
 
     const [selectedClasse, horaires] = await Promise.all([
