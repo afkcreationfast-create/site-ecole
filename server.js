@@ -481,7 +481,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE DEVOIRS & LEÇONS AVEC SUPPORT DE PHOTO
+// ROUTE DEVOIRS & LEÇONS (CAHIER DE TEXTES)
 app.get("/devoirs", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -625,7 +625,8 @@ app.get("/devoirs", async (req, res) => {
 
     res.send(layout(`Devoirs - ${classeNom}`, content, req));
   } catch (e) {
-    res.status(500).send("Erreur affichage devoirs.");
+    console.error("ERREUR DEVOIRS:", e.message);
+    res.status(500).send(layout("Erreur", `<section class='card'><h2>Erreur d'affichage des devoirs</h2><p style='color:var(--danger)'>${h(e.message)}</p></section>`, req));
   }
 });
 
