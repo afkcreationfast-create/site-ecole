@@ -126,6 +126,17 @@ async function initTables() {
         statut VARCHAR(20) NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS devoirs (
+        id SERIAL PRIMARY KEY,
+        classe_id INT REFERENCES classes(id) ON DELETE CASCADE,
+        matiere VARCHAR(100) NOT NULL,
+        titre VARCHAR(200) NOT NULL,
+        description TEXT NOT NULL,
+        date_pour DATE NOT NULL,
+        date_pub DATE DEFAULT CURRENT_DATE,
+        professeur VARCHAR(100) DEFAULT 'Enseignant'
+      );
+
       DO $$ 
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'presences_eleve_id_date_presence_key') THEN
@@ -215,6 +226,7 @@ const layout = (title, content, req) => {
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
+                  <a href="/devoirs" class="nav-item">📖 Devoirs &amp; Leçons</a>
                   <a href="/horaire" class="nav-item">📅 Horaire des Cours</a>
                   <a href="/calendrier" class="nav-item">🗓️ Calendrier &amp; Présence</a>
                   <a href="/galerie" class="nav-item">📸 Galerie Scolaire</a>`;
@@ -321,6 +333,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .excel-table td { padding: 10px 12px; border: 1px solid #e2e8f0; }
 .excel-table tr:nth-child(even) { background: #f8fafc; }
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
+
+.devoir-card { background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+.devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
+.devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
 
 .student-badge-card {
   width: 100%;
@@ -473,24 +489,29 @@ app.get("/", async (req, res) => {
     if (!isAuth) {
       tilesHtml = `
         <a href="/connexion" class="tile"><div class="tile-icon">🔑</div><div class="tile-title">Se Connecter</div><div class="tile-desc">Accéder à son espace privé</div></a>
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Devoirs &amp; Leçons</div><div class="tile-desc">Cahier de textes de la classe</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Horaire des Cours</div><div class="tile-desc">Consulter l'emploi du temps</div></a>
         <a href="/calendrier" class="tile"><div class="tile-icon">🗓️</div><div class="tile-title">Calendrier de Présence</div><div class="tile-desc">Aperçu mensuel des présences</div></a>`;
     } else if (rolesAdmin.includes(role)) {
       tilesHtml = `
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Publier Devoir/Leçon</div><div class="tile-desc">Gérer les devoirs par classe</div></a>
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'Appel</div><div class="tile-desc">Faire l'appel par classe</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Éditer les Horaires</div><div class="tile-desc">Gérer les emplois du temps</div></a>
         <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Espaces de gestion spécialisés</div></a>`;
     } else if (rolesProf.includes(role)) {
       tilesHtml = `
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Donner un Devoir</div><div class="tile-desc">Ajouter leçon ou travail à faire</div></a>
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Faire l'Appel</div><div class="tile-desc">Présences du jour</div></a>
         <a href="/prof" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Notes &amp; Devoirs</div><div class="tile-desc">Saisir les évaluations</div></a>`;
     } else if (role === "ELEVE") {
       tilesHtml = `
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Mes Devoirs &amp; Leçons</div><div class="tile-desc">Travail à faire pour demain &amp; plus tard</div></a>
         <a href="/espace-eleve" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Mon Dossier &amp; Badge</div><div class="tile-desc">Notes, bulletin et carte d'étudiant</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Mon Emploi du Temps</div><div class="tile-desc">Horaire officiel de ma classe</div></a>`;
     } else if (role === "PARENT") {
       tilesHtml = `
-        <a href="/espace-parent" class="tile"><div class="tile-icon">👪</div><div class="tile-title">Espace Parent</div><div class="tile-desc">Suivi de votre enfant</div></a>`;
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Devoirs de l'enfant</div><div class="tile-desc">Suivi du cahier de textes</div></a>
+        <a href="/espace-parent" class="tile"><div class="tile-icon">👪</div><div class="tile-title">Espace Parent</div><div class="tile-desc">Suivi global de votre enfant</div></a>`;
     }
 
     const annoncesHtml = annonces.rows.map(a => `
@@ -518,6 +539,157 @@ app.get("/", async (req, res) => {
 
     res.send(layout("Tableau de bord", content, req));
   } catch (e) { res.status(500).send("Erreur accueil."); }
+});
+
+// ROUTE DEVOIRS & LEÇONS (CAHIER DE TEXTES)
+app.get("/devoirs", async (req, res) => {
+  try {
+    const isAuth = !!req.session.user;
+    const userRole = isAuth ? req.session.user.role : null;
+    const isStaff = rolesStaff.includes(userRole);
+
+    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
+    if (classes.rows.length === 0) {
+      return res.send(layout("Devoirs", "<section class='card'><h2>Aucune classe</h2><p>Ajoutez des classes dans l'administration.</p></section>", req));
+    }
+
+    let selectedClasseId = classes.rows[0].id;
+    if (isStaff && req.query.classe_id) {
+      selectedClasseId = Number(req.query.classe_id);
+    } else if (isAuth && req.session.user.classe_id) {
+      selectedClasseId = req.session.user.classe_id;
+    } else if (req.query.classe_id) {
+      selectedClasseId = Number(req.query.classe_id);
+    }
+
+    const [selectedClasse, devoirsRes] = await Promise.all([
+      pool.query("SELECT nom FROM classes WHERE id=$1", [selectedClasseId]),
+      pool.query("SELECT d.*, TO_CHAR(d.date_pour, 'YYYY-MM-DD') as date_pour_fmt, TO_CHAR(d.date_pub, 'YYYY-MM-DD') as date_pub_fmt FROM devoirs d WHERE d.classe_id=$1 ORDER BY d.date_pour ASC", [selectedClasseId])
+    ]);
+
+    const classeNom = selectedClasse.rows[0]?.nom || "Classe";
+
+    const classOptionsHtml = classes.rows.map(c => `
+      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
+    `).join("");
+
+    const today = getTodayDate();
+
+    const devoirsHtml = devoirsRes.rows.map(d => {
+      const isUrgent = d.date_pour_fmt <= today;
+      const dateLabel = d.date_pour_fmt === today ? "📌 POUR AUJOURD'HUI" : (d.date_pour_fmt < today ? "⚠️ DÉPASSÉ" : `📅 Pour le ${dateFr(d.date_pour_fmt)}`);
+
+      return `
+        <div class="devoir-card" style="border-left-color:${isUrgent ? '#dc2626' : '#2563eb'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+            <div>
+              <span class="devoir-date-badge ${isUrgent ? 'urgent' : ''}">${dateLabel}</span>
+              <span class="excel-badge" style="margin-left:6px">${h(d.matiere)}</span>
+            </div>
+            <span style="font-size:.78rem;color:var(--muted)">Prof. <b>${h(d.professeur)}</b></span>
+          </div>
+
+          <h3 style="color:var(--navy);margin:8px 0 4px">${h(d.titre)}</h3>
+          <p style="color:#334155;font-size:.92rem;white-space:pre-wrap;margin-bottom:10px">${h(d.description)}</p>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--border);padding-top:8px;font-size:.78rem;color:var(--muted)">
+            <span>Publié le ${dateFr(d.date_pub_fmt)}</span>
+            ${isStaff ? `
+              <form method="post" action="/admin/devoir/supprimer" style="display:inline">
+                ${csrfField(req)}
+                <input type="hidden" name="id" value="${d.id}">
+                <input type="hidden" name="classe_id" value="${selectedClasseId}">
+                <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce devoir ?')">🗑️ Supprimer</button>
+              </form>` : ""}
+          </div>
+        </div>`;
+    }).join("") || "<p style='color:var(--muted);padding:20px;text-align:center'>Aucun devoir ni leçon enregistrés pour cette classe.</p>";
+
+    let formAjoutHtml = "";
+    if (isStaff) {
+      formAjoutHtml = `
+        <section class="card" style="border:2px solid var(--blue);background:#eff6ff">
+          <h2>➕ Donner un Devoir / Leçon pour : <span style="color:var(--blue)">${h(classeNom)}</span></h2>
+          <form method="post" action="/admin/devoir">
+            ${csrfField(req)}
+            <input type="hidden" name="classe_id" value="${selectedClasseId}">
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px">
+              <div>
+                <label>Matière</label>
+                <input name="matiere" required placeholder="Ex. Mathématiques, Français...">
+              </div>
+              <div>
+                <label>Pour quelle date ? (Date limite/rendu)</label>
+                <input type="date" name="date_pour" value="${today}" required>
+              </div>
+            </div>
+
+            <label>Titre du devoir / sujet de la leçon</label>
+            <input name="titre" required placeholder="Ex. Exercices p. 42 #1 à 5 / Apprendre le vocabulaire">
+
+            <label>Explications détaillées &amp; Consignes</label>
+            <textarea name="description" rows="4" required placeholder="Écrivez clairement les leçons à réviser ou les exercices à effectuer..."></textarea>
+
+            <button type="submit" class="btn full" style="margin-top:14px">📢 Publier le Devoir</button>
+          </form>
+        </section>`;
+    }
+
+    const content = `
+      <div class="card">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px">
+          <div>
+            <h2>📖 Devoirs &amp; Leçons (Cahier de Textes)</h2>
+            <p style="color:var(--muted)">Devoirs et révisions à faire pour : <b style="color:var(--blue)">${h(classeNom)}</b></p>
+          </div>
+          <div style="min-width:200px">
+            <label style="margin-top:0">Sélectionner une classe :</label>
+            <select onchange="window.location.href='/devoirs?classe_id=' + this.value">
+              ${classOptionsHtml}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      ${formAjoutHtml}
+
+      <section class="card">
+        <h2 style="margin-bottom:15px">📋 Liste des Travaux &amp; Leçons</h2>
+        ${devoirsHtml}
+      </section>`;
+
+    res.send(layout(`Devoirs - ${classeNom}`, content, req));
+  } catch (e) {
+    res.status(500).send("Erreur affichage devoirs.");
+  }
+});
+
+app.post("/admin/devoir", requireStaff, async (req, res) => {
+  const { classe_id, matiere, titre, description, date_pour } = req.body;
+  const user = req.session.user;
+  const profNom = `${user.prenom} ${user.nom}`;
+  try {
+    if (classe_id && matiere && titre && description && date_pour) {
+      await pool.query(
+        "INSERT INTO devoirs (classe_id, matiere, titre, description, date_pour, professeur) VALUES ($1, $2, $3, $4, $5, $6)",
+        [Number(classe_id), String(matiere).trim(), String(titre).trim(), String(description).trim(), date_pour, profNom]
+      );
+    }
+    res.redirect(`/devoirs?classe_id=${classe_id}`);
+  } catch (e) {
+    res.status(500).send("Erreur publication devoir : " + e.message);
+  }
+});
+
+app.post("/admin/devoir/supprimer", requireStaff, async (req, res) => {
+  const { id, classe_id } = req.body;
+  try {
+    await pool.query("DELETE FROM devoirs WHERE id=$1", [Number(id)]);
+    res.redirect(`/devoirs?classe_id=${classe_id}`);
+  } catch (e) {
+    res.status(500).send("Erreur suppression devoir.");
+  }
 });
 
 // ROUTE PRISE D'APPEL
@@ -626,7 +798,7 @@ app.post("/admin/appel", requireStaff, async (req, res) => {
   }
 });
 
-// PANNEAU DIRECTION (MENU PRINCIPAL VERS LES SOUS-PAGES)
+// PANNEAU DIRECTION
 app.get("/admin", requireAdmin, async (req, res) => {
   const content = `
     <div class="card">
@@ -635,6 +807,12 @@ app.get("/admin", requireAdmin, async (req, res) => {
     </div>
 
     <div class="tile-grid">
+      <a href="/devoirs" class="tile">
+        <div class="tile-icon">📖</div>
+        <div class="tile-title">Devoirs &amp; Leçons</div>
+        <div class="tile-desc">Cahier de textes global</div>
+      </a>
+
       <a href="/admin/classes" class="tile">
         <div class="tile-icon">🏫</div>
         <div class="tile-title">Gestion des Classes</div>
@@ -823,7 +1001,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page élèves."); }
 });
 
-// 3. SOUS-PAGE : GESTION DU STAFF (ADMINS, PROFS, PARENTS)
+// 3. SOUS-PAGE : GESTION DU STAFF
 app.get("/admin/staff", requireAdmin, async (req, res) => {
   try {
     const users = await pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }));
@@ -1022,7 +1200,7 @@ app.post("/admin/note", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur note."); }
 });
 
-// ROUTE GALERIE SCOLAIRE CORRIGÉE
+// ROUTE GALERIE SCOLAIRE
 app.get("/galerie", async (req, res) => {
   try {
     const photos = await pool.query("SELECT id, titre, photo_base64, TO_CHAR(date_ajout, 'YYYY-MM-DD') as date_fmt FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
