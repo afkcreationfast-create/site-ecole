@@ -139,6 +139,8 @@ async function initTables() {
       );
 
       ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS date_pub DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS professeur VARCHAR(100) DEFAULT 'Enseignant';
 
       DO $$ 
       BEGIN
@@ -504,7 +506,7 @@ app.get("/devoirs", async (req, res) => {
 
     const [selectedClasse, devoirsRes] = await Promise.all([
       pool.query("SELECT nom FROM classes WHERE id=$1", [selectedClasseId]),
-      pool.query("SELECT d.*, TO_CHAR(d.date_pour, 'YYYY-MM-DD') as date_pour_fmt, TO_CHAR(d.date_pub, 'YYYY-MM-DD') as date_pub_fmt FROM devoirs d WHERE d.classe_id=$1 ORDER BY d.date_pour ASC", [selectedClasseId])
+      pool.query("SELECT d.*, TO_CHAR(d.date_pour, 'YYYY-MM-DD') as date_pour_fmt, TO_CHAR(COALESCE(d.date_pub, CURRENT_DATE), 'YYYY-MM-DD') as date_pub_fmt FROM devoirs d WHERE d.classe_id=$1 ORDER BY d.date_pour ASC", [selectedClasseId])
     ]);
 
     const classeNom = selectedClasse.rows[0]?.nom || "Classe";
@@ -527,7 +529,7 @@ app.get("/devoirs", async (req, res) => {
               <span class="devoir-date-badge ${isUrgent ? 'urgent' : ''}">${dateLabel}</span>
               <span class="excel-badge" style="margin-left:6px">${h(d.matiere)}</span>
             </div>
-            <span style="font-size:.78rem;color:var(--muted)">Prof. <b>${h(d.professeur)}</b></span>
+            <span style="font-size:.78rem;color:var(--muted)">Prof. <b>${h(d.professeur || 'Enseignant')}</b></span>
           </div>
 
           <h3 style="color:var(--navy);margin:8px 0 4px">${h(d.titre)}</h3>
