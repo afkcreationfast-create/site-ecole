@@ -145,7 +145,67 @@ async function initTables() {
     console.log("Info DB init:", err.message);
   }
 }
-initTables();
+
+// IMPORTATION AUTOMATIQUE DES ÉLÈVES DE 1ère B
+async function importerEleves1èreB() {
+  try {
+    let resClasse = await pool.query("SELECT id FROM classes WHERE nom ILIKE '%1ère%B%' OR nom ILIKE '%1ère Année B%' LIMIT 1");
+    let classeId;
+
+    if (resClasse.rows.length === 0) {
+      const newClasse = await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année B', 'Fondamental') RETURNING id");
+      classeId = newClasse.rows[0].id;
+    } else {
+      classeId = resClasse.rows[0].id;
+    }
+
+    const eleves = [
+      { nom: "Augustin", prenom: "Jemima" },
+      { nom: "Brenord", prenom: "Weed Lorensky W." },
+      { nom: "Charles", prenom: "Evenhaissa Bestinie" },
+      { nom: "Chertoute", prenom: "Evalynn Brune" },
+      { nom: "Crejuste", prenom: "Ney-Saelie" },
+      { nom: "Dalusma", prenom: "Djena Erika S." },
+      { nom: "Dorvil", prenom: "Shamaï" },
+      { nom: "Duvisien", prenom: "Rose-Shaëlla" },
+      { nom: "Israëlle", prenom: "Lune Gaël" },
+      { nom: "Jean Baptiste", prenom: "Amadéo A." },
+      { nom: "Joisil", prenom: "Rose Daëlle" },
+      { nom: "Joseph", prenom: "Dave" },
+      { nom: "Joseph", prenom: "Mariana Nora-Lys" },
+      { nom: "Joseph", prenom: "Nathan Lucas" },
+      { nom: "Joseph", prenom: "Sarah-Djine" },
+      { nom: "Losandieu", prenom: "Laura Ashley" },
+      { nom: "Mathurin", prenom: "Achnaïca C." },
+      { nom: "Milfleur", prenom: "Terson" },
+      { nom: "Nord", prenom: "Marvents Fils" },
+      { nom: "Parvilus", prenom: "Philippe R.H." },
+      { nom: "Pierre", prenom: "Luckensia" },
+      { nom: "Saintelus", prenom: "Ginaylie" },
+      { nom: "Saint-Louis", prenom: "Brianna" },
+      { nom: "Sinsmyr", prenom: "Malaïca" },
+      { nom: "Trevol", prenom: "Fredly Carl-Tensky" }
+    ];
+
+    const defaultHash = await bcrypt.hash("ecole2026", 12);
+
+    for (let e of eleves) {
+      const check = await pool.query("SELECT id FROM utilisateurs WHERE nom=$1 AND prenom=$2 AND classe_id=$3", [e.nom, e.prenom, classeId]);
+      if (check.rows.length === 0) {
+        const code = "S&H-" + crypto.randomInt(1000, 10000);
+        await pool.query(
+          "INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1, $2, $3, $4, 'ELEVE', $5)",
+          [e.nom, e.prenom, code, defaultHash, classeId]
+        );
+      }
+    }
+    console.log("✅ Importation 1ère B terminée !");
+  } catch (err) {
+    console.error("Erreur importation élèves :", err.message);
+  }
+}
+
+initTables().then(() => importerEleves1èreB());
 
 // LAYOUT RESPONSIVE & STYLE GLOBAL
 const layout = (title, content, req) => {
