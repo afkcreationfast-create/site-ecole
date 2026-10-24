@@ -134,8 +134,11 @@ async function initTables() {
         description TEXT NOT NULL,
         date_pour DATE NOT NULL,
         date_pub DATE DEFAULT CURRENT_DATE,
-        professeur VARCHAR(100) DEFAULT 'Enseignant'
+        professeur VARCHAR(100) DEFAULT 'Enseignant',
+        image_url TEXT
       );
+
+      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS image_url TEXT;
 
       DO $$ 
       BEGIN
@@ -157,66 +160,7 @@ async function initTables() {
   }
 }
 
-// IMPORTATION AUTOMATIQUE DES ÉLÈVES DE 1ère B
-async function importerEleves1èreB() {
-  try {
-    let resClasse = await pool.query("SELECT id FROM classes WHERE nom ILIKE '%1ère%B%' OR nom ILIKE '%1ère Année B%' LIMIT 1");
-    let classeId;
-
-    if (resClasse.rows.length === 0) {
-      const newClasse = await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année B', 'Fondamental') RETURNING id");
-      classeId = newClasse.rows[0].id;
-    } else {
-      classeId = resClasse.rows[0].id;
-    }
-
-    const eleves = [
-      { nom: "Augustin", prenom: "Jemima" },
-      { nom: "Brenord", prenom: "Weed Lorensky W." },
-      { nom: "Charles", prenom: "Evenhaissa Bestinie" },
-      { nom: "Chertoute", prenom: "Evalynn Brune" },
-      { nom: "Crejuste", prenom: "Ney-Saelie" },
-      { nom: "Dalusma", prenom: "Djena Erika S." },
-      { nom: "Dorvil", prenom: "Shamaï" },
-      { nom: "Duvisien", prenom: "Rose-Shaëlla" },
-      { nom: "Israëlle", prenom: "Lune Gaël" },
-      { nom: "Jean Baptiste", prenom: "Amadéo A." },
-      { nom: "Joisil", prenom: "Rose Daëlle" },
-      { nom: "Joseph", prenom: "Dave" },
-      { nom: "Joseph", prenom: "Mariana Nora-Lys" },
-      { nom: "Joseph", prenom: "Nathan Lucas" },
-      { nom: "Joseph", prenom: "Sarah-Djine" },
-      { nom: "Losandieu", prenom: "Laura Ashley" },
-      { nom: "Mathurin", prenom: "Achnaïca C." },
-      { nom: "Milfleur", prenom: "Terson" },
-      { nom: "Nord", prenom: "Marvents Fils" },
-      { nom: "Parvilus", prenom: "Philippe R.H." },
-      { nom: "Pierre", prenom: "Luckensia" },
-      { nom: "Saintelus", prenom: "Ginaylie" },
-      { nom: "Saint-Louis", prenom: "Brianna" },
-      { nom: "Sinsmyr", prenom: "Malaïca" },
-      { nom: "Trevol", prenom: "Fredly Carl-Tensky" }
-    ];
-
-    const defaultHash = await bcrypt.hash("ecole2026", 12);
-
-    for (let e of eleves) {
-      const check = await pool.query("SELECT id FROM utilisateurs WHERE nom=$1 AND prenom=$2 AND classe_id=$3", [e.nom, e.prenom, classeId]);
-      if (check.rows.length === 0) {
-        const code = "S&H-" + crypto.randomInt(1000, 10000);
-        await pool.query(
-          "INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1, $2, $3, $4, 'ELEVE', $5)",
-          [e.nom, e.prenom, code, defaultHash, classeId]
-        );
-      }
-    }
-    console.log("✅ Importation 1ère B terminée !");
-  } catch (err) {
-    console.error("Erreur importation élèves :", err.message);
-  }
-}
-
-initTables().then(() => importerEleves1èreB());
+initTables();
 
 // LAYOUT RESPONSIVE & STYLE GLOBAL
 const layout = (title, content, req) => {
@@ -312,11 +256,6 @@ main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; mi
 .tile-desc { font-size: .83rem; color: var(--muted); }
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px #00000008; word-wrap: break-word; overflow: hidden; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-
-.stat-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
-.stat-value { font-size: 1.7rem; font-weight: 900; color: var(--blue); }
-.stat-label { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
 
 label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
 input, select, textarea { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font: inherit; color: var(--text); }
@@ -337,6 +276,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .devoir-card { background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
 .devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
+.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); margin: 10px 0; cursor: pointer; }
 
 .student-badge-card {
   width: 100%;
@@ -494,13 +434,13 @@ app.get("/", async (req, res) => {
         <a href="/calendrier" class="tile"><div class="tile-icon">🗓️</div><div class="tile-title">Calendrier de Présence</div><div class="tile-desc">Aperçu mensuel des présences</div></a>`;
     } else if (rolesAdmin.includes(role)) {
       tilesHtml = `
-        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Publier Devoir/Leçon</div><div class="tile-desc">Gérer les devoirs par classe</div></a>
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Publier Devoir/Leçon</div><div class="tile-desc">Gérer les devoirs avec photos</div></a>
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'Appel</div><div class="tile-desc">Faire l'appel par classe</div></a>
         <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Éditer les Horaires</div><div class="tile-desc">Gérer les emplois du temps</div></a>
         <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Espaces de gestion spécialisés</div></a>`;
     } else if (rolesProf.includes(role)) {
       tilesHtml = `
-        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Donner un Devoir</div><div class="tile-desc">Ajouter leçon ou travail à faire</div></a>
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Donner un Devoir</div><div class="tile-desc">Ajouter leçon, exercice ou photo de livre</div></a>
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Faire l'Appel</div><div class="tile-desc">Présences du jour</div></a>
         <a href="/prof" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Notes &amp; Devoirs</div><div class="tile-desc">Saisir les évaluations</div></a>`;
     } else if (role === "ELEVE") {
@@ -541,7 +481,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE DEVOIRS & LEÇONS (CAHIER DE TEXTES)
+// ROUTE DEVOIRS & LEÇONS AVEC SUPPORT DE PHOTO
 app.get("/devoirs", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -578,6 +518,7 @@ app.get("/devoirs", async (req, res) => {
     const devoirsHtml = devoirsRes.rows.map(d => {
       const isUrgent = d.date_pour_fmt <= today;
       const dateLabel = d.date_pour_fmt === today ? "📌 POUR AUJOURD'HUI" : (d.date_pour_fmt < today ? "⚠️ DÉPASSÉ" : `📅 Pour le ${dateFr(d.date_pour_fmt)}`);
+      const imageHtml = d.image_url ? `<a href="${h(d.image_url)}" target="_blank"><img src="${h(d.image_url)}" class="devoir-img" alt="Exercice en image"></a>` : "";
 
       return `
         <div class="devoir-card" style="border-left-color:${isUrgent ? '#dc2626' : '#2563eb'}">
@@ -591,6 +532,8 @@ app.get("/devoirs", async (req, res) => {
 
           <h3 style="color:var(--navy);margin:8px 0 4px">${h(d.titre)}</h3>
           <p style="color:#334155;font-size:.92rem;white-space:pre-wrap;margin-bottom:10px">${h(d.description)}</p>
+
+          ${imageHtml}
 
           <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--border);padding-top:8px;font-size:.78rem;color:var(--muted)">
             <span>Publié le ${dateFr(d.date_pub_fmt)}</span>
@@ -626,14 +569,35 @@ app.get("/devoirs", async (req, res) => {
             </div>
 
             <label>Titre du devoir / sujet de la leçon</label>
-            <input name="titre" required placeholder="Ex. Exercices p. 42 #1 à 5 / Apprendre le vocabulaire">
+            <input name="titre" required placeholder="Ex. Exercices p. 42 #1 à 5 / Leçon à étudier">
 
             <label>Explications détaillées &amp; Consignes</label>
-            <textarea name="description" rows="4" required placeholder="Écrivez clairement les leçons à réviser ou les exercices à effectuer..."></textarea>
+            <textarea name="description" rows="4" required placeholder="Écrivez clairement les consignes ou les numéros de l'exercice..."></textarea>
+
+            <label>📷 Joindre une Photo du Livre / Exercice (Optionnel) :</label>
+            <input type="file" id="devoirFileInput" accept="image/*" style="display:none">
+            <input type="hidden" name="image_url" id="devoirImageBase64">
+            
+            <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('devoirFileInput').click()">📁 Prenez en photo / Choisir une image</button>
+            <div id="previewText" style="font-size:.8rem;color:var(--success);margin-top:6px;font-weight:bold"></div>
 
             <button type="submit" class="btn full" style="margin-top:14px">📢 Publier le Devoir</button>
           </form>
-        </section>`;
+        </section>
+
+        <script>
+          document.getElementById('devoirFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function(event) {
+                document.getElementById('devoirImageBase64').value = event.target.result;
+                document.getElementById('previewText').innerText = "✅ Photo sélectionnée (" + file.name + ")";
+              };
+              reader.readAsDataURL(file);
+            }
+          });
+        </script>`;
     }
 
     const content = `
@@ -666,14 +630,14 @@ app.get("/devoirs", async (req, res) => {
 });
 
 app.post("/admin/devoir", requireStaff, async (req, res) => {
-  const { classe_id, matiere, titre, description, date_pour } = req.body;
+  const { classe_id, matiere, titre, description, date_pour, image_url } = req.body;
   const user = req.session.user;
   const profNom = `${user.prenom} ${user.nom}`;
   try {
     if (classe_id && matiere && titre && description && date_pour) {
       await pool.query(
-        "INSERT INTO devoirs (classe_id, matiere, titre, description, date_pour, professeur) VALUES ($1, $2, $3, $4, $5, $6)",
-        [Number(classe_id), String(matiere).trim(), String(titre).trim(), String(description).trim(), date_pour, profNom]
+        "INSERT INTO devoirs (classe_id, matiere, titre, description, date_pour, professeur, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        [Number(classe_id), String(matiere).trim(), String(titre).trim(), String(description).trim(), date_pour, profNom, image_url || null]
       );
     }
     res.redirect(`/devoirs?classe_id=${classe_id}`);
