@@ -167,16 +167,16 @@ async function initTables() {
 
 initTables();
 
-// LAYOUT RESPONSIVE & STYLE GLOBAL AVEC LE VRAI LOGO OFFICIEL
+// LAYOUT RESPONSIVE & STYLE GLOBAL AVEC NETTETÉ OPTIMISÉE POUR LES IMAGES
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
   const userRole = user ? user.role : null;
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
-  // Intégration du logo officiel stocké sous logo.jpeg dans le dépôt
+  // Logo officiel avec rendu net et fond propre
   const schoolLogoHtml = `<a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
-    <img src="/logo.jpeg" alt="LEKOL S&H" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">
+    <img src="/logo.jpeg" alt="LEKOL S&H" style="width:42px;height:42px;object-fit:contain;border-radius:8px;background:#ffffff;padding:2px;image-rendering:-webkit-optimize-contrast;">
     <span style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:0.5px">LEKOL <span style="color:var(--gold)">S&amp;H</span></span>
   </a>`;
 
@@ -243,7 +243,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
 .close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
 
 .user-sidebar-card { display: flex; align-items: center; gap: 12px; padding: 15px 20px; border-bottom: 1px solid #1e293b; background: #162032; }
-.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--blue); }
+.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--blue); image-rendering: -webkit-optimize-contrast; }
 
 .sidebar-nav { padding: 15px 10px; flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
 .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: .92rem; border-radius: 8px; transition: .15s; }
@@ -285,7 +285,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .devoir-card { background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
 .devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
-.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); margin: 10px 0; cursor: pointer; }
+.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); margin: 10px 0; cursor: pointer; image-rendering: -webkit-optimize-contrast; }
 
 .student-badge-card {
   width: 100%;
@@ -303,7 +303,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .badge-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px; }
 .badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
 .badge-body { display: flex; align-items: center; gap: 16px; }
-.badge-photo { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; border: 3px solid #fff; background: #cbd5e1; }
+.badge-photo { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; border: 3px solid #fff; background: #cbd5e1; image-rendering: -webkit-optimize-contrast; }
 .badge-info { flex: 1; min-width: 0; }
 .badge-name { font-size: 1.1rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
 .badge-code { font-family: monospace; font-size: .9rem; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; font-weight: 700; }
@@ -311,7 +311,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
 .gallery-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); }
+.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); image-rendering: -webkit-optimize-contrast; }
 .gallery-body { padding: 12px; }
 
 .calendar-grid { 
@@ -713,7 +713,7 @@ app.get("/admin/appel", requireStaff, async (req, res) => {
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
-              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;image-rendering:-webkit-optimize-contrast;">
               <div>
                 <b>${h(s.nom)} ${h(s.prenom)}</b>
                 <div style="font-size:.78rem;color:var(--muted)">${h(s.code_eleve)}</div>
@@ -934,7 +934,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
-              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;image-rendering:-webkit-optimize-contrast;">
               <b>${h(s.nom)} ${h(s.prenom)}</b>
             </div>
           </td>
