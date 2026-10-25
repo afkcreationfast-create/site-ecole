@@ -36,6 +36,9 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(express.json({ limit: "20mb" }));
 
+// Permet d'accéder aux fichiers statiques (comme logo.jpeg à la racine)
+app.use(express.static(__dirname));
+
 app.use(session({
   store: new PgSession({
     pool,
@@ -164,12 +167,18 @@ async function initTables() {
 
 initTables();
 
-// LAYOUT RESPONSIVE & STYLE GLOBAL
+// LAYOUT RESPONSIVE & STYLE GLOBAL AVEC LE VRAI LOGO OFFICIEL
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
   const userRole = user ? user.role : null;
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
+
+  // Intégration du logo officiel stocké sous logo.jpeg dans le dépôt
+  const schoolLogoHtml = `<a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+    <img src="/logo.jpeg" alt="LEKOL S&H" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">
+    <span style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:0.5px">LEKOL <span style="color:var(--gold)">S&amp;H</span></span>
+  </a>`;
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
                   <a href="/devoirs" class="nav-item">📖 Devoirs &amp; Leçons</a>
@@ -230,9 +239,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
   z-index: 1000;
   transition: transform .3s ease;
 }
-.sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
-.sidebar-logo { font-size: 1.4rem; font-weight: 900; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 10px; }
-.sidebar-logo span { color: var(--gold); }
+.sidebar-header { padding: 14px 20px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
 .close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
 
 .user-sidebar-card { display: flex; align-items: center; gap: 12px; padding: 15px 20px; border-bottom: 1px solid #1e293b; background: #162032; }
@@ -336,7 +343,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <a href="/" class="sidebar-logo">🎓 LEKOL <span>S&amp;H</span></a>
+    ${schoolLogoHtml}
     <button class="close-sidebar-btn" onclick="document.getElementById('sidebar').classList.remove('open')">✕</button>
   </div>
   ${isAuth ? `
@@ -355,7 +362,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <div class="main-wrapper">
   <header class="topbar">
     <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.add('open')">☰</button>
-    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H</div>
+    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H — Portefeuille Officiel</div>
     <div class="user-badge">
       ${isAuth ? `<a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion" style="padding:6px 12px;font-size:.8rem">Connexion</a>`}
     </div>
@@ -431,9 +438,8 @@ app.get("/", async (req, res) => {
     if (!isAuth) {
       tilesHtml = `
         <a href="/connexion" class="tile"><div class="tile-icon">🔑</div><div class="tile-title">Se Connecter</div><div class="tile-desc">Accéder à son espace privé</div></a>
-        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Devoirs &amp; Leçons</div><div class="tile-desc">Cahier de textes de la classe</div></a>
-        <a href="/horaire" class="tile"><div class="tile-icon">📅</div><div class="tile-title">Horaire des Cours</div><div class="tile-desc">Consulter l'emploi du temps</div></a>
-        <a href="/calendrier" class="tile"><div class="tile-icon">🗓️</div><div class="tile-title">Calendrier de Présence</div><div class="tile-desc">Aperçu mensuel des présences</div></a>`;
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Consulter les Devoirs</div><div class="tile-desc">Connectez-vous pour voir votre classe</div></a>
+        <a href="/galerie" class="tile"><div class="tile-icon">📸</div><div class="tile-title">Galerie Scolaire</div><div class="tile-desc">Événements et activités</div></a>`;
     } else if (rolesAdmin.includes(role)) {
       tilesHtml = `
         <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Publier Devoir/Leçon</div><div class="tile-desc">Gérer les devoirs avec photos</div></a>
@@ -442,9 +448,9 @@ app.get("/", async (req, res) => {
         <a href="/admin" class="tile"><div class="tile-icon">⚙️</div><div class="tile-title">Panneau Direction</div><div class="tile-desc">Espaces de gestion spécialisés</div></a>`;
     } else if (rolesProf.includes(role)) {
       tilesHtml = `
-        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Donner un Devoir</div><div class="tile-desc">Ajouter leçon, exercice ou photo de livre</div></a>
+        <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Donner un Devoir</div><div class="tile-desc">Ajouter leçon ou exercice</div></a>
         <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Faire l'Appel</div><div class="tile-desc">Présences du jour</div></a>
-        <a href="/prof" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Notes &amp; Devoirs</div><div class="tile-desc">Saisir les évaluations</div></a>`;
+        <a href="/admin/notes" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Saisir les Notes</div><div class="tile-desc">Notes &amp; évaluations</div></a>`;
     } else if (role === "ELEVE") {
       tilesHtml = `
         <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Mes Devoirs &amp; Leçons</div><div class="tile-desc">Travail à faire pour ma classe</div></a>
@@ -483,7 +489,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE DEVOIRS & LEÇONS (STRICTEMENT SÉCURISÉE)
+// ROUTE DEVOIRS & LEÇONS (SÉCURISÉE: AUCUN ACCÈS SI NON CONNECTÉ)
 app.get("/devoirs", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -496,15 +502,24 @@ app.get("/devoirs", async (req, res) => {
       return res.send(layout("Devoirs", "<section class='card'><h2>Aucune classe</h2><p>Ajoutez des classes dans l'administration.</p></section>", req));
     }
 
+    if (!isAuth) {
+      const content = `
+        <section class="card" style="text-align:center;padding:40px 20px;">
+          <h2>🔒 Espace Sécurisé</h2>
+          <p style="color:var(--muted);margin:10px 0 20px">Vous devez vous connecter avec votre compte pour consulter le cahier de textes et les devoirs de votre classe.</p>
+          <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter maintenant</a>
+        </section>`;
+      return res.send(layout("Connexion Requise", content, req));
+    }
+
     let selectedClasseId;
 
-    // RESTRICTION STRICTE : L'ÉLÈVE EST STRICTEMENT BLOQUÉ SUR SA PRATIQUE DE CLASSE
     if (isEleve) {
       selectedClasseId = req.session.user.classe_id;
     } else if (isStaff && req.query.classe_id) {
       selectedClasseId = Number(req.query.classe_id);
     } else {
-      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
+      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (req.session.user.classe_id || classes.rows[0].id);
     }
 
     const [selectedClasse, devoirsRes] = await Promise.all([
@@ -515,7 +530,6 @@ app.get("/devoirs", async (req, res) => {
     const classeNom = selectedClasse.rows[0]?.nom || "Ma Classe";
 
     let selectorHtml = "";
-    // SEULS LES STAFF / PROFESSEURS / ADMINS PEUVENT SÉLECTIONNER DES CLASSES
     if (isStaff) {
       const classOptionsHtml = classes.rows.map(c => `
         <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
@@ -1370,13 +1384,23 @@ app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
 });
 
-// HORAIRE ET EMPLOI DU TEMPS (STRICTEMENT SÉCURISÉ)
+// HORAIRE ET EMPLOI DU TEMPS (SÉCURISÉ)
 app.get("/horaire", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
     const userRole = isAuth ? req.session.user.role : null;
     const isAdmin = rolesAdmin.includes(userRole);
     const isEleve = userRole === "ELEVE";
+
+    if (!isAuth) {
+      const content = `
+        <section class="card" style="text-align:center;padding:40px 20px;">
+          <h2>🔒 Espace Sécurisé</h2>
+          <p style="color:var(--muted);margin:10px 0 20px">Veuillez vous connecter pour consulter l'emploi du temps des classes.</p>
+          <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter</a>
+        </section>`;
+      return res.send(layout("Connexion Requise", content, req));
+    }
 
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
     
@@ -1391,7 +1415,7 @@ app.get("/horaire", async (req, res) => {
     } else if (isAdmin && req.query.classe_id) {
       selectedClasseId = Number(req.query.classe_id);
     } else {
-      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
+      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (req.session.user.classe_id || classes.rows[0].id);
     }
 
     const [selectedClasse, horaires] = await Promise.all([
