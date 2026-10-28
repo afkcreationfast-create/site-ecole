@@ -72,7 +72,67 @@ const h = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 const dateFr = value =>
   value ? new Date(value).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : "—";
 
-const getTodayDate = () => new Date().toISOString().split("T")[0];
+// FIXATION STRICTE DE L'HEURE SUR LE FUSEAU HORAIRE D'HAÏTI
+const getTodayDate = () => {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
+};
+
+// PLAN ANNUEL SCHOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)
+const planScolaire2026 = {
+  "2026-08": [
+    { titre: "Inventaire & Acquisition", desc: "Achat et inventaire du matériel pour l'école primaire et le collège" },
+    { titre: "Traitement des dossiers & entretiens", desc: "Rencontre et entretiens avec les nouveaux enseignants" },
+    { titre: "Séminaire d'orientation professionnelle", desc: "Orientation de la Promotion 2026-2027" }
+  ],
+  "2026-09": [
+    { titre: "Cours spécial de préparation", desc: "Cours de mise à niveau avant la grande ouverture" },
+    { titre: "Réunion des parents", desc: "Lancement officiel de l'année scolaire" },
+    { titre: "Séminaire des enseignants", desc: "Discussion et ateliers pédagogiques" },
+    { titre: "Rentrée scolaire officielle", desc: "Vérification des uniformes et des livres" }
+  ],
+  "2026-10": [
+    { titre: "Élection du conseil des élèves", desc: "Élections scolaires pour le Collège" },
+    { titre: "Supervision officielle des enseignants", desc: "Observations en classe" },
+    { titre: "Commémoration de la mort de Dessalines", desc: "Activité culturelle et historique" },
+    { titre: "Réunion de suivi des parents", desc: "Préparation pour les examens trimestriels" }
+  ],
+  "2026-11": [
+    { titre: "1er Examen Trimestriel", desc: "Évaluations du premier trimestre" },
+    { titre: "Commémoration de Vertières", desc: "Célébration de la fête de l'Indépendance" }
+  ],
+  "2026-12": [
+    { titre: "Remise des bulletins (Primaire & Collège)", desc: "Livraison officielle des résultats aux parents" },
+    { titre: "Vacances de Noël", desc: "Début des vacances du premier trimestre" }
+  ],
+  "2027-01": [
+    { titre: "Rentrée scolaire du 2ème trimestre", desc: "Reprise des cours pour tous les élèves" }
+  ],
+  "2027-02": [
+    { titre: "2ème Examen Trimestriel", desc: "Évaluations du deuxième trimestre" },
+    { titre: "Vacances de Carnaval & Mercredi des Cendres", desc: "Période de congé de Carnaval" },
+    { titre: "Inscriptions ouvertes pour la Maternelle", desc: "Nouveaux élèves pour Kindergarten" }
+  ],
+  "2027-03": [
+    { titre: "Inscriptions sur liste d'attente", desc: "Inscriptions Primaire & Collège" },
+    { titre: "Remise des bulletins du 2ème trimestre", desc: "Distribution des résultats aux parents" },
+    { titre: "EXPOSMART (Foire Scientifique & Techno)", desc: "Exposition des projets d'élèves en sciences et technologie" },
+    { titre: "Anniversaire de l'École S&H", desc: "Célébration officielle de l'établissement" },
+    { titre: "Vacances de Pâques", desc: "Congé de Pâques" }
+  ],
+  "2027-04": [
+    { titre: "Examen d'entrée Maternelle", desc: "Tests d'admission" },
+    { titre: "3ème Examen Trimestriel", desc: "Évaluations du troisième trimestre" }
+  ],
+  "2027-05": [
+    { titre: "Remise des bulletins du 3ème trimestre", desc: "Remise des résultats" },
+    { titre: "Fête du Drapeau", desc: "Défilé dans les rues avec les écoles du village" },
+    { titre: "Pique-nique des enseignants & élèves", desc: "Journée récréative de détente" }
+  ],
+  "2027-06": [
+    { titre: "4ème Examen Trimestriel & Examens d'État", desc: "Fin de l'année académique et examens officiels" },
+    { titre: "Graduation Promotion 2026-2027", desc: "Cérémonie officielle de remise de diplômes" }
+  ]
+};
 
 // MIGRATIONS AUTOMATIQUES BDD
 async function initTables() {
@@ -362,7 +422,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <div class="main-wrapper">
   <header class="topbar">
     <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.add('open')">☰</button>
-    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H — Portefeuille Officiel</div>
+    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H — Portail Officiel</div>
     <div class="user-badge">
       ${isAuth ? `<a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion" style="padding:6px 12px;font-size:.8rem">Connexion</a>`}
     </div>
@@ -1309,7 +1369,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
           </div>
         </div>
         <div class="badge-footer">
-          <span>Année Académique 2025-2026</span>
+          <span>Année Académique 2026-2027</span>
           <span style="font-weight:800;color:var(--gold)">VALIDÉ ✓</span>
         </div>
       </div>
@@ -1601,7 +1661,7 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// CALENDRIER
+// CALENDRIER AVEC PROGRAMME ANNUEL 2026-2027 & NAVIGATION LIBRE
 app.get("/calendrier", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -1613,12 +1673,17 @@ app.get("/calendrier", async (req, res) => {
       presences.rows.forEach(p => { presenceMap[p.date_presence.split("T")[0]] = p.statut; });
     }
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const monthName = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    // Heure locale Haïti pour initialiser la date
+    const todayHaitiStr = getTodayDate();
+    const todayParts = todayHaitiStr.split("-");
+    
+    let year = req.query.year ? parseInt(req.query.year) : parseInt(todayParts[0]);
+    let month = req.query.month !== undefined ? parseInt(req.query.month) : (parseInt(todayParts[1]) - 1);
 
-    const firstDayIndex = new Date(year, month, 1).getDay();
+    const targetDate = new Date(year, month, 1);
+    const monthName = targetDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+    const firstDayIndex = targetDate.getDay();
     const startOffset = (firstDayIndex === 0 ? 6 : firstDayIndex - 1); 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -1640,9 +1705,33 @@ app.get("/calendrier", async (req, res) => {
       calendarCellsHtml += `<div class="calendar-cell ${cellClass}">${day}</div>`;
     }
 
+    // Récupération des événements scolaires du mois sélectionné
+    const keyMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const activitesMois = planScolaire2026[keyMonth] || [];
+
+    let eventsHtml = activitesMois.map(act => `
+      <div style="border-left:4px solid var(--gold);padding:10px 14px;background:#fff8e6;border-radius:0 8px 8px 0;margin-bottom:10px">
+        <strong style="color:var(--navy);font-size:.95rem;display:block">📌 ${h(act.titre)}</strong>
+        <p style="font-size:.85rem;color:#475569;margin-top:2px">${h(act.desc)}</p>
+      </div>
+    `).join("") || "<p style='color:var(--muted);font-size:.88rem'>Aucun événement particulier planifié pour ce mois.</p>";
+
+    // Navigation entre les mois
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear = month === 11 ? year + 1 : year;
+
     const content = `
       <section class="card">
-        <h2>🗓️ Calendrier de Présence — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px">
+          <h2>🗓️ Calendrier &amp; Programme Scolaire — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+          <div style="display:flex;gap:8px">
+            <a href="/calendrier?year=${prevYear}&month=${prevMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">◀ Mois Précédent</a>
+            <a href="/calendrier?year=${nextYear}&month=${nextMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">Mois Suivant ▶</a>
+          </div>
+        </div>
+
         <div class="calendar-grid">
           <div class="calendar-day-head">Lun</div>
           <div class="calendar-day-head">Mar</div>
@@ -1653,10 +1742,16 @@ app.get("/calendrier", async (req, res) => {
           <div class="calendar-day-head">Dim</div>
           ${calendarCellsHtml}
         </div>
-        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap">
+
+        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:15px">
           <div class="legend-item"><span class="legend-dot" style="background:#22c55e;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Vert</b> = Présent</div>
           <div class="legend-item"><span class="legend-dot" style="background:#ef4444;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Rouge</b> = Absent</div>
           <div class="legend-item"><span class="legend-dot" style="background:#64748b;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Gris</b> = Retard</div>
+        </div>
+
+        <div style="margin-top:20px">
+          <h3 style="color:var(--navy);margin-bottom:12px">📅 Activités &amp; Jalons du Mois (${monthName})</h3>
+          ${eventsHtml}
         </div>
       </section>`;
 
