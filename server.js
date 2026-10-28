@@ -77,7 +77,7 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// PLAN ANNUEL SCHOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)
+// PLAN ANNUEL SCOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)[span_1](start_span)[span_1](end_span)
 const planScolaire2026 = {
   "2026-08": [
     { titre: "Inventaire & Acquisition", desc: "Achat et inventaire du matériel pour l'école primaire et le collège" },
@@ -227,14 +227,13 @@ async function initTables() {
 
 initTables();
 
-// LAYOUT RESPONSIVE & STYLE GLOBAL AVEC NETTETÉ OPTIMISÉE POUR LES IMAGES
+// LAYOUT RESPONSIVE & STYLE GLOBAL (DESIGN PREMIUM 2026)
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
   const userRole = user ? user.role : null;
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
-  // Logo officiel avec rendu net et fond propre
   const schoolLogoHtml = `<a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
     <img src="/logo.jpeg" alt="LEKOL S&H" style="width:42px;height:42px;object-fit:contain;border-radius:8px;background:#ffffff;padding:2px;image-rendering:-webkit-optimize-contrast;">
     <span style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:0.5px">LEKOL <span style="color:var(--gold)">S&amp;H</span></span>
@@ -267,30 +266,44 @@ const layout = (title, content, req) => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#101d3a">
 <title>${h(title)} — LEKOL S&amp;H</title>
 <style>
+/* ==========================================
+   LEKOL S&H — DESIGN PREMIUM 2026
+========================================== */
+
 :root {
-  --sidebar-w: 260px;
-  --navy: #0f172a;
-  --blue: #2563eb;
-  --blue-hover: #1d4ed8;
-  --gold: #f59e0b;
-  --bg: #f1f5f9;
+  --navy: #101d3a;
+  --blue: #2457e6;
+  --blue-hover: #1947c7;
+  --gold: #f4b942;
+  --bg: #f4f7fc;
   --card: #ffffff;
-  --text: #0f172a;
+  --text: #17233d;
   --muted: #64748b;
-  --border: #cbd5e1;
-  --success: #16a34a;
+  --border: #e2e8f0;
+  --success: #15803d;
   --danger: #dc2626;
+  --sidebar-w: 260px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+body {
+  background:
+    radial-gradient(ellipse at top right, #e6edff 0%, transparent 40%),
+    var(--bg);
+  color: var(--text);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  min-height: 100vh;
+  margin: 0;
+}
 
 .sidebar {
   width: var(--sidebar-w);
-  background: var(--navy);
+  background: linear-gradient(180deg, #101d3a 0%, #172b52 100%);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -298,67 +311,151 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
   top: 0; bottom: 0; left: 0;
   z-index: 1000;
   transition: transform .3s ease;
+  box-shadow: 8px 0 32px rgba(15, 23, 42, 0.08);
 }
-.sidebar-header { padding: 14px 20px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
+
+.sidebar-header {
+  padding: 20px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  display: flex; justify-content: space-between; align-items: center;
+}
 .close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
 
-.user-sidebar-card { display: flex; align-items: center; gap: 12px; padding: 15px 20px; border-bottom: 1px solid #1e293b; background: #162032; }
+.user-sidebar-card { 
+  display: flex; align-items: center; gap: 12px; 
+  padding: 15px 20px; 
+  border-bottom: 1px solid rgba(255,255,255,.10); 
+  background: rgba(255,255,255,.055); 
+}
 .user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--blue); image-rendering: -webkit-optimize-contrast; }
 
 .sidebar-nav { padding: 15px 10px; flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: .92rem; border-radius: 8px; transition: .15s; }
-.nav-item:hover, .nav-item.active { background: #1e293b; color: #fff; }
-.nav-item.active { background: var(--blue); }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  margin: 2px 0;
+  color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: .92rem;
+  transition: background .2s ease, transform .2s ease, color .2s ease;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,.10);
+  transform: translateX(3px);
+  color: #fff;
+}
+.nav-item.active {
+  background: linear-gradient(135deg, #3269f2, #2457e6);
+  box-shadow: 0 6px 18px rgba(36,87,230,.25);
+  color: #fff;
+}
 
 .main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; width: 100%; }
-header.topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+header.topbar {
+  position: sticky; top: 0; z-index: 900;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(226,232,240,.85);
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
 .toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--navy); }
 .user-badge { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: .9rem; }
 
-main.content { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; min-width: 0; }
+main.content { max-width: 1440px; padding: 28px; margin: 0 auto; width: 100%; min-width: 0; }
 
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-.tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 6px -1px #00000010; }
-.tile:hover { transform: translateY(-2px); border-color: var(--blue); }
-.tile-icon { font-size: 1.8rem; width: 46px; height: 46px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: var(--blue); }
-.tile-title { font-size: 1.05rem; font-weight: 800; color: var(--navy); }
-.tile-desc { font-size: .83rem; color: var(--muted); }
+.card {
+  background: rgba(255,255,255,.96);
+  border: 1px solid #e7ecf5;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 28px rgba(25,42,75,.045);
+  transition: box-shadow .2s ease;
+  word-wrap: break-word; overflow: hidden;
+}
 
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px #00000008; word-wrap: break-word; overflow: hidden; }
+.card h1, .card h2, .card h3 { color: var(--navy); line-height: 1.3; }
 
 label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
-input, select, textarea { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font: inherit; color: var(--text); }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px #2563eb22; }
-.btn, button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; transition: .15s; text-align: center; }
-.btn:hover, button:hover { background: var(--blue-hover); }
-.btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid var(--border); }
-.btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; }
+input, select, textarea {
+  width: 100%; min-height: 45px;
+  border: 1px solid #d9e1ee; border-radius: 11px;
+  padding: 12px 14px; background: #fff; font: inherit; color: var(--text);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: #6d91f8; box-shadow: 0 0 0 4px rgba(36,87,230,.10);
+}
+
+.btn, button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--blue); color: #fff; border: 0;
+  border-radius: 11px; padding: 12px 19px;
+  font: inherit; font-weight: 750; text-decoration: none; cursor: pointer;
+  box-shadow: 0 4px 10px rgba(36,87,230,.12);
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+  text-align: center;
+}
+.btn:hover, button:hover {
+  background: var(--blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(36,87,230,.18);
+}
+.btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid var(--border); box-shadow: none; }
+.btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; box-shadow: none; }
 .btn.full { width: 100%; }
 
-.excel-table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border); }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 18px 0 30px; }
+.tile {
+  position: relative; overflow: hidden; min-height: 165px;
+  padding: 23px; border-radius: 19px; border: 1px solid #e5eaf4;
+  background: linear-gradient(145deg, #fff, #f9fbff);
+  text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 6px 20px rgba(25,42,75,.045);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.tile:hover {
+  transform: translateY(-5px); border-color: #b9cbff;
+  box-shadow: 0 16px 32px rgba(36,87,230,.12);
+}
+.tile-icon {
+  width: 54px; height: 54px; border-radius: 16px;
+  background: linear-gradient(135deg, #e8efff, #dbe7ff);
+  color: var(--blue); font-size: 1.9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.tile-title { font-size: 1.08rem; font-weight: 800; color: var(--navy); letter-spacing: -.2px; }
+.tile-desc { font-size: .9rem; color: var(--muted); line-height: 1.55; }
+
+.excel-table-container {
+  width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  margin-top: 10px; border-radius: 14px; border: 1px solid var(--border);
+  box-shadow: 0 4px 15px rgba(15,23,42,.035);
+}
 .excel-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .88rem; min-width: 500px; }
-.excel-table th { background: #0f172a; color: #fff; text-align: left; padding: 10px 12px; font-weight: 700; border: 1px solid #334155; white-space: nowrap; }
-.excel-table td { padding: 10px 12px; border: 1px solid #e2e8f0; }
+.excel-table th { background: #172b52; color: #fff; text-align: left; padding: 14px 12px; font-weight: 700; border: 1px solid #334155; white-space: nowrap; }
+.excel-table td { padding: 13px 12px; border: 1px solid #e2e8f0; }
 .excel-table tr:nth-child(even) { background: #f8fafc; }
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
 
-.devoir-card { background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+.devoir-card {
+  background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue);
+  border-radius: 15px; padding: 20px; margin-bottom: 14px;
+  box-shadow: 0 5px 16px rgba(15,23,42,.04);
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.devoir-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(15,23,42,.08); }
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
 .devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
 .devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); margin: 10px 0; cursor: pointer; image-rendering: -webkit-optimize-contrast; }
 
 .student-badge-card {
-  width: 100%;
-  max-width: 360px;
-  margin: 0 auto 20px auto;
+  width: 100%; max-width: 360px; margin: 0 auto 20px auto;
   background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-  border-radius: 16px;
-  padding: 20px;
-  color: #fff;
-  box-shadow: 0 10px 20px -5px rgba(15,23,42,0.3);
-  border: 2px solid #3b82f6;
-  position: relative;
-  overflow: hidden;
+  border-radius: 22px; padding: 20px; color: #fff;
+  box-shadow: 0 18px 40px rgba(15,23,42,.22); border: 2px solid #3b82f6;
+  position: relative; overflow: hidden;
 }
 .badge-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px; }
 .badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
@@ -370,16 +467,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
 
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
-.gallery-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.gallery-card {
+  background: #fff; border-radius: 17px; border: 1px solid var(--border); overflow: hidden;
+  box-shadow: 0 8px 22px rgba(15,23,42,.06);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.gallery-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(15,23,42,.12); }
 .gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); image-rendering: -webkit-optimize-contrast; }
 .gallery-body { padding: 12px; }
 
 .calendar-grid { 
-  display: grid !important; 
-  grid-template-columns: repeat(7, 1fr) !important; 
-  gap: 8px !important; 
-  margin-top: 14px !important; 
-  text-align: center !important; 
+  display: grid !important; grid-template-columns: repeat(7, 1fr) !important; 
+  gap: 8px !important; margin-top: 14px !important; text-align: center !important; 
 }
 .calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; padding: 6px 0; }
 .calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--border); }
@@ -388,14 +487,37 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
 .calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
 
+a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid #93b4ff; outline-offset: 3px;
+}
+
 @media(max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
   .toggle-btn { display: block; }
   .close-sidebar-btn { display: block; }
-  main.content { padding: 14px; }
-  .card { padding: 16px; }
+  header.topbar { padding: 13px 15px; }
+  main.content { padding: 18px 13px; }
+  .card { padding: 18px; border-radius: 16px; margin-bottom: 18px; }
+  .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .tile { min-width: 0; min-height: 145px; padding: 15px; border-radius: 15px; }
+  .tile-title { font-size: .98rem; }
+  .tile-desc { font-size: .82rem; }
+}
+
+@media (max-width: 420px) {
+  .tile-grid { grid-template-columns: 1fr; }
+  main.content { padding: 12px 10px; }
+  .card { padding: 15px; }
+  header.topbar > div:first-of-type { font-size: .86rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important;
+  }
 }
 </style>
 </head>
@@ -549,7 +671,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE DEVOIRS & LEÇONS (SÉCURISÉE: AUCUN ACCÈS SI NON CONNECTÉ)
+// ROUTE DEVOIRS & LEÇONS
 app.get("/devoirs", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -573,7 +695,6 @@ app.get("/devoirs", async (req, res) => {
     }
 
     let selectedClasseId;
-
     if (isEleve) {
       selectedClasseId = req.session.user.classe_id;
     } else if (isStaff && req.query.classe_id) {
@@ -904,7 +1025,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   res.send(layout("Panneau Direction", content, req));
 });
 
-// 1. SOUS-PAGE : GESTION DES CLASSES
+// 1. GESTION DES CLASSES
 app.get("/admin/classes", requireAdmin, async (req, res) => {
   try {
     const classesWithCount = await pool.query("SELECT c.id, c.nom, c.niveau, COUNT(u.id) AS total_eleves FROM classes c LEFT JOIN utilisateurs u ON u.classe_id=c.id AND u.role='ELEVE' GROUP BY c.id ORDER BY c.nom ASC").catch(() => ({ rows: [] }));
@@ -964,7 +1085,7 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page classes."); }
 });
 
-// 2. SOUS-PAGE : ÉLÈVES & INSCRIPTIONS
+// 2. ÉLÈVES & INSCRIPTIONS
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
     const selectedClasseFilter = req.query.filter_classe_id ? Number(req.query.filter_classe_id) : null;
@@ -1030,9 +1151,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
 
       <section class="card">
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
-          <div>
-            <h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2>
-          </div>
+          <div><h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2></div>
           <div style="min-width:200px">
             <select style="padding:8px 12px;font-weight:bold" onchange="window.location.href='/admin/eleves?filter_classe_id=' + this.value">
               ${filterClassOpts}
@@ -1052,7 +1171,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page élèves."); }
 });
 
-// 3. SOUS-PAGE : GESTION DU STAFF
+// 3. GESTION DU STAFF
 app.get("/admin/staff", requireAdmin, async (req, res) => {
   try {
     const users = await pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }));
@@ -1106,7 +1225,7 @@ app.get("/admin/staff", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page staff."); }
 });
 
-// 4. SOUS-PAGE : ANNONCES
+// 4. ANNONCES
 app.get("/admin/annonces", requireAdmin, async (req, res) => {
   try {
     const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC").catch(() => ({ rows: [] }));
@@ -1144,7 +1263,7 @@ app.get("/admin/annonces", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page annonces."); }
 });
 
-// 5. SOUS-PAGE : SAISIE DES NOTES
+// 5. SAISIE DES NOTES
 app.get("/admin/notes", requireStaff, async (req, res) => {
   try {
     const students = await pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY c.nom ASC, u.nom ASC").catch(() => ({ rows: [] }));
@@ -1182,7 +1301,6 @@ app.get("/admin/notes", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur sous-page notes."); }
 });
 
-// ACTION DU FORMULAIRE : GESTION DES CLASSES
 app.post("/admin/classe", requireAdmin, async (req, res) => {
   const { nom, niveau } = req.body;
   try {
@@ -1201,7 +1319,6 @@ app.post("/admin/classe/supprimer", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur suppression classe."); }
 });
 
-// ACTION DU FORMULAIRE : STAFF
 app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
   const { nom, prenom, role, email, password } = req.body;
   try {
@@ -1214,7 +1331,6 @@ app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur création utilisateur."); }
 });
 
-// ACTION DU FORMULAIRE : ANNONCES
 app.post("/admin/annonce", requireAdmin, async (req, res) => {
   const { titre, contenu } = req.body;
   try {
@@ -1223,7 +1339,6 @@ app.post("/admin/annonce", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur annonce."); }
 });
 
-// ACTION DU FORMULAIRE : ÉLÈVES
 app.post("/admin/eleve", requireAdmin, async (req, res) => {
   const { nom, prenom, password, classe_id } = req.body;
   try {
@@ -1242,7 +1357,6 @@ app.post("/admin/eleve/supprimer", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur suppression élève."); }
 });
 
-// ACTION DU FORMULAIRE : NOTES
 app.post("/admin/note", requireStaff, async (req, res) => {
   const { eleve_id, matiere, note, total_max, type_eval, periode } = req.body;
   try {
@@ -1351,7 +1465,6 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
 
     const absCount = presences.rows.filter(p => p.statut === "ABSENT").length;
     const retCount = presences.rows.filter(p => p.statut === "RETARD").length;
-
     const photoUrl = student.photo_url || "https://via.placeholder.com/100";
 
     const content = `
@@ -1444,7 +1557,7 @@ app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
 });
 
-// HORAIRE ET EMPLOI DU TEMPS (SÉCURISÉ)
+// HORAIRE ET EMPLOI DU TEMPS
 app.get("/horaire", async (req, res) => {
   try {
     const isAuth = !!req.session.user;
@@ -1463,13 +1576,11 @@ app.get("/horaire", async (req, res) => {
     }
 
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
-    
     if (classes.rows.length === 0) {
       return res.send(layout("Horaire", "<section class='card'><h2>Aucune classe configurée</h2><p>Veuillez d'abord créer des classes dans l'administration.</p></section>", req));
     }
 
     let selectedClasseId;
-
     if (isEleve) {
       selectedClasseId = req.session.user.classe_id;
     } else if (isAdmin && req.query.classe_id) {
@@ -1501,7 +1612,6 @@ app.get("/horaire", async (req, res) => {
     }
 
     const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
-
     let joursHtml = jours.map(j => {
       const coursJour = horaires.rows.filter(h => h.jour.toLowerCase() === j.toLowerCase());
       return `
@@ -1673,7 +1783,6 @@ app.get("/calendrier", async (req, res) => {
       presences.rows.forEach(p => { presenceMap[p.date_presence.split("T")[0]] = p.statut; });
     }
 
-    // Heure locale Haïti pour initialiser la date
     const todayHaitiStr = getTodayDate();
     const todayParts = todayHaitiStr.split("-");
     
@@ -1705,7 +1814,6 @@ app.get("/calendrier", async (req, res) => {
       calendarCellsHtml += `<div class="calendar-cell ${cellClass}">${day}</div>`;
     }
 
-    // Récupération des événements scolaires du mois sélectionné
     const keyMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
     const activitesMois = planScolaire2026[keyMonth] || [];
 
@@ -1716,7 +1824,6 @@ app.get("/calendrier", async (req, res) => {
       </div>
     `).join("") || "<p style='color:var(--muted);font-size:.88rem'>Aucun événement particulier planifié pour ce mois.</p>";
 
-    // Navigation entre les mois
     const prevMonth = month === 0 ? 11 : month - 1;
     const prevYear = month === 0 ? year - 1 : year;
     const nextMonth = month === 11 ? 0 : month + 1;
