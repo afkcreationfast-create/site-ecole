@@ -227,7 +227,7 @@ async function initTables() {
 
 initTables();
 
-// LAYOUT RESPONSIVE & STYLE GLOBAL (DESIGN PREMIUM 2026)
+// LAYOUT RESPONSIVE & STYLE GLOBAL (LEKOL S&H — SIGNATURE DESIGN 2026)
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -235,8 +235,8 @@ const layout = (title, content, req) => {
   const photo = user && user.photo_url ? user.photo_url : "https://via.placeholder.com/40";
 
   const schoolLogoHtml = `<a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
-    <img src="/logo.jpeg" alt="LEKOL S&H" style="width:42px;height:42px;object-fit:contain;border-radius:8px;background:#ffffff;padding:2px;image-rendering:-webkit-optimize-contrast;">
-    <span style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:0.5px">LEKOL <span style="color:var(--gold)">S&amp;H</span></span>
+    <img src="/logo.jpeg" alt="LEKOL S&H" style="width:42px;height:42px;object-fit:contain;border-radius:12px;background:#ffffff;padding:2px;image-rendering:-webkit-optimize-contrast;">
+    <span style="font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:0.5px">LEKOL <span style="color:var(--lk-gold)">S&amp;H</span></span>
   </a>`;
 
   let navItems = `<a href="/" class="nav-item">🏠 Tableau de Bord</a>
@@ -266,44 +266,59 @@ const layout = (title, content, req) => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#101d3a">
+<meta name="theme-color" content="#0b1630">
 <title>${h(title)} — LEKOL S&amp;H</title>
 <style>
-/* ==========================================
-   LEKOL S&H — DESIGN PREMIUM 2026
-========================================== */
+/* ==================================================
+   LEKOL S&H — SIGNATURE DESIGN 2026
+================================================== */
 
 :root {
-  --navy: #101d3a;
-  --blue: #2457e6;
-  --blue-hover: #1947c7;
-  --gold: #f4b942;
-  --bg: #f4f7fc;
-  --card: #ffffff;
-  --text: #17233d;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --success: #15803d;
-  --danger: #dc2626;
+  --lk-navy: #0b1630;
+  --lk-navy-2: #142749;
+  --lk-blue: #285bea;
+  --lk-blue-light: #eaf0ff;
+  --lk-gold: #e5b75b;
+  --lk-white: #ffffff;
+  --lk-bg: #f3f6fc;
+  --lk-text: #182641;
+  --lk-muted: #708099;
+  --lk-line: #e5eaf3;
+  --lk-radius: 20px;
+  --lk-shadow: 0 12px 35px rgba(17, 36, 72, .065);
   --sidebar-w: 260px;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background:
-    radial-gradient(ellipse at top right, #e6edff 0%, transparent 40%),
-    var(--bg);
-  color: var(--text);
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
+  background-color: var(--lk-bg);
+  background-image:
+    radial-gradient(ellipse at 85% 0%,
+      rgba(40,91,234,.075), transparent 36%);
+  color: var(--lk-text);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.12px;
   display: flex;
   min-height: 100vh;
   margin: 0;
 }
 
+::selection {
+  background: #cbd9ff;
+  color: var(--lk-navy);
+}
+
 .sidebar {
   width: var(--sidebar-w);
-  background: linear-gradient(180deg, #101d3a 0%, #172b52 100%);
+  background:
+    radial-gradient(ellipse at 0% 0%,
+      rgba(53,103,221,.24), transparent 45%),
+    linear-gradient(165deg, #0b1630, #122647 65%, #101c37);
+  border-right: 1px solid rgba(255,255,255,.07);
+  box-shadow: 8px 0 35px rgba(11,22,48,.08);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -311,154 +326,270 @@ body {
   top: 0; bottom: 0; left: 0;
   z-index: 1000;
   transition: transform .3s ease;
-  box-shadow: 8px 0 32px rgba(15, 23, 42, 0.08);
 }
 
 .sidebar-header {
-  padding: 20px 18px;
-  border-bottom: 1px solid rgba(255,255,255,.10);
+  padding: 23px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.09);
   display: flex; justify-content: space-between; align-items: center;
 }
+
 .close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
 
-.user-sidebar-card { 
-  display: flex; align-items: center; gap: 12px; 
-  padding: 15px 20px; 
-  border-bottom: 1px solid rgba(255,255,255,.10); 
-  background: rgba(255,255,255,.055); 
-}
-.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--blue); image-rendering: -webkit-optimize-contrast; }
-
-.sidebar-nav { padding: 15px 10px; flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
-.nav-item {
+.user-sidebar-card {
+  margin: 14px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+  background: rgba(255,255,255,.045);
+  padding: 12px 15px;
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 15px;
+}
+
+.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--lk-blue); image-rendering: -webkit-optimize-contrast; }
+
+.sidebar-nav { padding: 10px 0; flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+
+.nav-item {
+  margin: 4px 10px;
+  width: calc(100% - 20px);
   border-radius: 12px;
-  margin: 2px 0;
-  color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: .92rem;
-  transition: background .2s ease, transform .2s ease, color .2s ease;
+  padding: 13px 15px;
+  color: #d5deef;
+  font-weight: 600;
+  font-size: .92rem;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 12px;
+  transition: background .2s ease, color .2s ease;
 }
+
 .nav-item:hover {
-  background: rgba(255,255,255,.10);
-  transform: translateX(3px);
+  background: rgba(255,255,255,.09);
   color: #fff;
 }
+
 .nav-item.active {
-  background: linear-gradient(135deg, #3269f2, #2457e6);
-  box-shadow: 0 6px 18px rgba(36,87,230,.25);
+  background: linear-gradient(115deg, #356cf2, #2853ce);
   color: #fff;
+  box-shadow: 0 6px 20px rgba(40,91,234,.26);
 }
 
 .main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; width: 100%; }
 
 header.topbar {
-  position: sticky; top: 0; z-index: 900;
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(226,232,240,.85);
-  padding: 16px 24px;
+  min-height: 68px;
+  border-bottom: 1px solid rgba(225,232,243,.9);
+  box-shadow: 0 5px 22px rgba(17,36,72,.035);
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(18px);
+  padding: 12px 24px;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  position: sticky; top: 0; z-index: 900;
 }
-.toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--navy); }
+
+.toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--lk-navy); }
 .user-badge { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: .9rem; }
 
-main.content { max-width: 1440px; padding: 28px; margin: 0 auto; width: 100%; min-width: 0; }
+main.content {
+  max-width: 1500px;
+  padding: 32px;
+  margin: 0 auto; width: 100%; min-width: 0;
+}
+
+main.content > h1,
+main.content > h2 {
+  color: var(--lk-navy);
+  letter-spacing: -1px;
+  font-weight: 800;
+}
 
 .card {
-  background: rgba(255,255,255,.96);
-  border: 1px solid #e7ecf5;
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 28px rgba(25,42,75,.045);
-  transition: box-shadow .2s ease;
+  position: relative;
+  background: var(--lk-white);
+  border: 1px solid rgba(224,231,242,.92);
+  border-radius: var(--lk-radius);
+  padding: 26px;
+  box-shadow: var(--lk-shadow);
+  margin-bottom: 25px;
   word-wrap: break-word; overflow: hidden;
 }
 
-.card h1, .card h2, .card h3 { color: var(--navy); line-height: 1.3; }
-
-label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
-input, select, textarea {
-  width: 100%; min-height: 45px;
-  border: 1px solid #d9e1ee; border-radius: 11px;
-  padding: 12px 14px; background: #fff; font: inherit; color: var(--text);
-  transition: border-color .2s ease, box-shadow .2s ease;
-}
-input:focus, select:focus, textarea:focus {
-  outline: none; border-color: #6d91f8; box-shadow: 0 0 0 4px rgba(36,87,230,.10);
+.card h1,
+.card h2,
+.card h3 {
+  color: var(--lk-navy);
+  font-weight: 750;
+  letter-spacing: -.45px;
 }
 
-.btn, button {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--blue); color: #fff; border: 0;
-  border-radius: 11px; padding: 12px 19px;
-  font: inherit; font-weight: 750; text-decoration: none; cursor: pointer;
-  box-shadow: 0 4px 10px rgba(36,87,230,.12);
-  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
-  text-align: center;
+.card p {
+  line-height: 1.75;
 }
-.btn:hover, button:hover {
-  background: var(--blue-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 7px 16px rgba(36,87,230,.18);
-}
-.btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid var(--border); box-shadow: none; }
-.btn.danger { background: var(--danger); padding: 5px 10px; font-size: .8rem; box-shadow: none; }
-.btn.full { width: 100%; }
 
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 18px 0 30px; }
+.tile-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px; margin: 18px 0 30px;
+}
+
 .tile {
-  position: relative; overflow: hidden; min-height: 165px;
-  padding: 23px; border-radius: 19px; border: 1px solid #e5eaf4;
-  background: linear-gradient(145deg, #fff, #f9fbff);
-  text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 10px;
-  box-shadow: 0 6px 20px rgba(25,42,75,.045);
+  border: 1px solid #e5eaf4;
+  border-radius: 20px;
+  padding: 25px;
+  background: linear-gradient(145deg, #fff 40%, #f7f9ff);
+  box-shadow: 0 8px 24px rgba(17,36,72,.045);
+  text-decoration: none; color: var(--lk-text);
+  display: flex; flex-direction: column; gap: 10px;
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
 }
+
 .tile:hover {
-  transform: translateY(-5px); border-color: #b9cbff;
-  box-shadow: 0 16px 32px rgba(36,87,230,.12);
+  transform: translateY(-4px);
+  border-color: #bdceff;
+  box-shadow: 0 18px 38px rgba(40,91,234,.11);
 }
+
 .tile-icon {
-  width: 54px; height: 54px; border-radius: 16px;
-  background: linear-gradient(135deg, #e8efff, #dbe7ff);
-  color: var(--blue); font-size: 1.9rem;
+  width: 54px; height: 54px;
+  border-radius: 17px;
+  background: linear-gradient(145deg, #edf2ff, #dce7ff);
+  color: var(--lk-blue);
+  font-size: 1.9rem;
   display: flex; align-items: center; justify-content: center;
 }
-.tile-title { font-size: 1.08rem; font-weight: 800; color: var(--navy); letter-spacing: -.2px; }
-.tile-desc { font-size: .9rem; color: var(--muted); line-height: 1.55; }
+
+.tile-title {
+  color: var(--lk-navy);
+  font-size: 1.08rem;
+  font-weight: 750;
+}
+
+.tile-desc {
+  color: var(--lk-muted);
+  line-height: 1.65;
+  font-size: .9rem;
+}
+
+.btn,
+button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--lk-blue); color: #fff; border: 0;
+  border-radius: 12px; padding: 12px 19px;
+  font: inherit; font-weight: 700; letter-spacing: .05px;
+  text-decoration: none; cursor: pointer; text-align: center;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.btn:not(.secondary),
+button[type="submit"] {
+  box-shadow: 0 5px 14px rgba(40,91,234,.13);
+}
+
+.btn:hover,
+button:hover {
+  filter: brightness(1.025);
+}
+
+.btn:active,
+button:active {
+  transform: scale(.985);
+}
+
+.btn.secondary { background: #f1f5f9; color: #35435c; border: 1px solid var(--lk-line); box-shadow: none; }
+.btn.danger { background: #dc2626; padding: 5px 10px; font-size: .8rem; box-shadow: none; }
+.btn.full { width: 100%; }
+
+label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
+
+input,
+select,
+textarea {
+  width: 100%;
+  background-color: #fff;
+  color: var(--lk-text);
+  border: 1px solid #dce3ef;
+  border-radius: 12px;
+  padding: 12px 15px;
+  font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a1b5;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #7193f5;
+  box-shadow: 0 0 0 4px rgba(40,91,234,.09);
+}
 
 .excel-table-container {
-  width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  margin-top: 10px; border-radius: 14px; border: 1px solid var(--border);
-  box-shadow: 0 4px 15px rgba(15,23,42,.035);
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--lk-line);
+  border-radius: 16px;
+  background: #fff;
+  margin-top: 10px;
 }
-.excel-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .88rem; min-width: 500px; }
-.excel-table th { background: #172b52; color: #fff; text-align: left; padding: 14px 12px; font-weight: 700; border: 1px solid #334155; white-space: nowrap; }
-.excel-table td { padding: 13px 12px; border: 1px solid #e2e8f0; }
-.excel-table tr:nth-child(even) { background: #f8fafc; }
+
+.excel-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%; font-size: .88rem; min-width: 500px;
+}
+
+.excel-table th {
+  background: #142749;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .25px;
+  padding: 16px;
+  white-space: nowrap;
+  border: 1px solid #23385e;
+}
+
+.excel-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #edf0f6;
+  border-right: 1px solid #f1f5f9;
+  color: #35435c;
+}
+
+.excel-table tbody tr:last-child td { border-bottom: 0; }
+.excel-table tbody tr:hover { background: #f6f8ff; }
+
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
 
-.devoir-card {
-  background: #fff; border: 1px solid var(--border); border-left: 5px solid var(--blue);
-  border-radius: 15px; padding: 20px; margin-bottom: 14px;
-  box-shadow: 0 5px 16px rgba(15,23,42,.04);
-  transition: box-shadow .2s ease, transform .2s ease;
+.devoir-card,
+.gallery-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid var(--lk-line);
+  box-shadow: 0 7px 22px rgba(17,36,72,.05);
+  padding: 20px; margin-bottom: 14px;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
-.devoir-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(15,23,42,.08); }
+
+.devoir-card:hover,
+.gallery-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(17,36,72,.09);
+}
+
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
 .devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
-.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); margin: 10px 0; cursor: pointer; image-rendering: -webkit-optimize-contrast; }
+.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--lk-line); margin: 10px 0; cursor: pointer; image-rendering: -webkit-optimize-contrast; }
 
 .student-badge-card {
   width: 100%; max-width: 360px; margin: 0 auto 20px auto;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  background: linear-gradient(135deg, #0b1630 0%, #1e3a8a 100%);
   border-radius: 22px; padding: 20px; color: #fff;
   box-shadow: 0 18px 40px rgba(15,23,42,.22); border: 2px solid #3b82f6;
   position: relative; overflow: hidden;
 }
 .badge-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px; }
-.badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
+.badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--lk-gold); }
 .badge-body { display: flex; align-items: center; gap: 16px; }
 .badge-photo { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; border: 3px solid #fff; background: #cbd5e1; image-rendering: -webkit-optimize-contrast; }
 .badge-info { flex: 1; min-width: 0; }
@@ -467,56 +598,59 @@ input:focus, select:focus, textarea:focus {
 .badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
 
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
-.gallery-card {
-  background: #fff; border-radius: 17px; border: 1px solid var(--border); overflow: hidden;
-  box-shadow: 0 8px 22px rgba(15,23,42,.06);
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-.gallery-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(15,23,42,.12); }
-.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border); image-rendering: -webkit-optimize-contrast; }
-.gallery-body { padding: 12px; }
+.gallery-card { padding: 0; overflow: hidden; }
+.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--lk-line); image-rendering: -webkit-optimize-contrast; }
+.gallery-body { padding: 14px; }
 
 .calendar-grid { 
   display: grid !important; grid-template-columns: repeat(7, 1fr) !important; 
   gap: 8px !important; margin-top: 14px !important; text-align: center !important; 
 }
-.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; padding: 6px 0; }
-.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--border); }
+.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--lk-muted); text-transform: uppercase; padding: 6px 0; }
+.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--lk-line); }
 .calendar-cell.empty { background: transparent; border: none; }
 .calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
 .calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
 .calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
 
-a { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 3px solid #93b4ff; outline-offset: 3px;
+a { transition: color .18s ease; -webkit-tap-highlight-color: transparent; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #8eacff;
+  outline-offset: 3px;
 }
 
-@media(max-width: 900px) {
+@media (max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
   .toggle-btn { display: block; }
   .close-sidebar-btn { display: block; }
-  header.topbar { padding: 13px 15px; }
-  main.content { padding: 18px 13px; }
-  .card { padding: 18px; border-radius: 16px; margin-bottom: 18px; }
-  .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .tile { min-width: 0; min-height: 145px; padding: 15px; border-radius: 15px; }
-  .tile-title { font-size: .98rem; }
-  .tile-desc { font-size: .82rem; }
+
+  main.content { padding: 20px 15px; }
+  .card { padding: 20px; border-radius: 17px; }
+  .tile-grid { gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { padding: 18px; border-radius: 17px; }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .tile-grid { grid-template-columns: 1fr; }
-  main.content { padding: 12px 10px; }
-  .card { padding: 15px; }
-  header.topbar > div:first-of-type { font-size: .86rem !important; }
+  main.content { padding: 13px 10px; }
+  .card { padding: 16px; margin-bottom: 16px; }
+  .tile { padding: 15px; }
+  input, select, textarea { max-width: 100%; }
+  .excel-table th, .excel-table td { padding: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   *, *::before, *::after {
-    scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
   }
 }
 </style>
@@ -533,7 +667,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     <img src="${h(photo)}" class="user-avatar" alt="Avatar">
     <div style="overflow:hidden">
       <strong style="display:block;font-size:.88rem;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#fff">${h(user.prenom)} ${h(user.nom)}</strong>
-      <span style="font-size:.75rem;color:var(--gold);font-weight:700">${h(user.role)}</span>
+      <span style="font-size:.75rem;color:var(--lk-gold);font-weight:700">${h(user.role)}</span>
     </div>
   </div>` : ''}
   <nav class="sidebar-nav">
@@ -544,7 +678,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 <div class="main-wrapper">
   <header class="topbar">
     <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.add('open')">☰</button>
-    <div style="font-weight:800;color:var(--navy);font-size:1.05rem">LEKOL S&amp;H — Portail Officiel</div>
+    <div style="font-weight:800;color:var(--lk-navy);font-size:1.05rem">LEKOL S&amp;H — Portail Officiel</div>
     <div class="user-badge">
       ${isAuth ? `<a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion" style="padding:6px 12px;font-size:.8rem">Connexion</a>`}
     </div>
@@ -645,26 +779,26 @@ app.get("/", async (req, res) => {
     }
 
     const annoncesHtml = annonces.rows.map(a => `
-      <div style="border-left:4px solid var(--blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
-        <strong style="color:var(--navy);font-size:1rem;display:block">${h(a.titre)}</strong>
-        <span style="font-size:.78rem;color:var(--muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
+      <div style="border-left:4px solid var(--lk-blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
+        <strong style="color:var(--lk-navy);font-size:1rem;display:block">${h(a.titre)}</strong>
+        <span style="font-size:.78rem;color:var(--lk-muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
         <p style="margin-top:6px;font-size:.9rem;color:#334155">${h(a.contenu)}</p>
       </div>
-    `).join("") || "<p style='color:var(--muted)'>Aucun communiqué officiel pour le moment.</p>";
+    `).join("") || "<p style='color:var(--lk-muted)'>Aucun communiqué officiel pour le moment.</p>";
 
     const content = `
-      <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:24px">
+      <div class="card" style="background:linear-gradient(135deg,#0b1630,#1e3a8a);color:#fff;padding:24px">
         <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:999px;font-size:.8rem;font-weight:700">📅 ${todayStr}</span>
         <h1 style="font-size:1.8rem;margin:10px 0 4px;color:#fff">Portail Officiel — LEKOL S&amp;H</h1>
         <p style="opacity:.9;font-size:.9rem">Plateforme de gestion scolaire officielle.</p>
       </div>
 
       <section class="card">
-        <h2 style="margin-bottom:12px;color:var(--navy);display:flex;align-items:center;gap:8px">📢 Panneau d'Annonces &amp; Communiqués</h2>
+        <h2 style="margin-bottom:12px;color:var(--lk-navy);display:flex;align-items:center;gap:8px">📢 Panneau d'Annonces &amp; Communiqués</h2>
         ${annoncesHtml}
       </section>
 
-      <h2 style="margin-bottom:14px;color:var(--navy)">Accès Rapides</h2>
+      <h2 style="margin-bottom:14px;color:var(--lk-navy)">Accès Rapides</h2>
       <div class="tile-grid">${tilesHtml}</div>`;
 
     res.send(layout("Tableau de bord", content, req));
@@ -688,7 +822,7 @@ app.get("/devoirs", async (req, res) => {
       const content = `
         <section class="card" style="text-align:center;padding:40px 20px;">
           <h2>🔒 Espace Sécurisé</h2>
-          <p style="color:var(--muted);margin:10px 0 20px">Vous devez vous connecter avec votre compte pour consulter le cahier de textes et les devoirs de votre classe.</p>
+          <p style="color:var(--lk-muted);margin:10px 0 20px">Vous devez vous connecter avec votre compte pour consulter le cahier de textes et les devoirs de votre classe.</p>
           <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter maintenant</a>
         </section>`;
       return res.send(layout("Connexion Requise", content, req));
@@ -733,21 +867,21 @@ app.get("/devoirs", async (req, res) => {
       const imageHtml = d.image_url ? `<a href="${h(d.image_url)}" target="_blank"><img src="${h(d.image_url)}" class="devoir-img" alt="Exercice en image"></a>` : "";
 
       return `
-        <div class="devoir-card" style="border-left-color:${isUrgent ? '#dc2626' : '#2563eb'}">
+        <div class="devoir-card" style="border-left-color:${isUrgent ? '#dc2626' : '#285bea'}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
             <div>
               <span class="devoir-date-badge ${isUrgent ? 'urgent' : ''}">${dateLabel}</span>
               <span class="excel-badge" style="margin-left:6px">${h(d.matiere)}</span>
             </div>
-            <span style="font-size:.78rem;color:var(--muted)">Prof. <b>${h(d.professeur || 'Enseignant')}</b></span>
+            <span style="font-size:.78rem;color:var(--lk-muted)">Prof. <b>${h(d.professeur || 'Enseignant')}</b></span>
           </div>
 
-          <h3 style="color:var(--navy);margin:8px 0 4px">${h(d.titre)}</h3>
+          <h3 style="color:var(--lk-navy);margin:8px 0 4px">${h(d.titre)}</h3>
           <p style="color:#334155;font-size:.92rem;white-space:pre-wrap;margin-bottom:10px">${h(d.description)}</p>
 
           ${imageHtml}
 
-          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--border);padding-top:8px;font-size:.78rem;color:var(--muted)">
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--lk-line);padding-top:8px;font-size:.78rem;color:var(--lk-muted)">
             <span>Publié le ${dateFr(d.date_pub_fmt)}</span>
             ${isStaff ? `
               <form method="post" action="/admin/devoir/supprimer" style="display:inline">
@@ -758,13 +892,13 @@ app.get("/devoirs", async (req, res) => {
               </form>` : ""}
           </div>
         </div>`;
-    }).join("") || "<p style='color:var(--muted);padding:20px;text-align:center'>Aucun devoir ni leçon enregistrés pour cette classe.</p>";
+    }).join("") || "<p style='color:var(--lk-muted);padding:20px;text-align:center'>Aucun devoir ni leçon enregistrés pour cette classe.</p>";
 
     let formAjoutHtml = "";
     if (isStaff) {
       formAjoutHtml = `
-        <section class="card" style="border:2px solid var(--blue);background:#eff6ff">
-          <h2>➕ Donner un Devoir / Leçon pour : <span style="color:var(--blue)">${h(classeNom)}</span></h2>
+        <section class="card" style="border:2px solid var(--lk-blue);background:#eff6ff">
+          <h2>➕ Donner un Devoir / Leçon pour : <span style="color:var(--lk-blue)">${h(classeNom)}</span></h2>
           <form method="post" action="/admin/devoir">
             ${csrfField(req)}
             <input type="hidden" name="classe_id" value="${selectedClasseId}">
@@ -791,7 +925,7 @@ app.get("/devoirs", async (req, res) => {
             <input type="hidden" name="image_url" id="devoirImageBase64">
             
             <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('devoirFileInput').click()">📁 Prenez en photo / Choisir une image</button>
-            <div id="previewText" style="font-size:.8rem;color:var(--success);margin-top:6px;font-weight:bold"></div>
+            <div id="previewText" style="font-size:.8rem;color:#15803d;margin-top:6px;font-weight:bold"></div>
 
             <button type="submit" class="btn full" style="margin-top:14px">📢 Publier le Devoir</button>
           </form>
@@ -817,7 +951,7 @@ app.get("/devoirs", async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px">
           <div>
             <h2>📖 Devoirs &amp; Leçons (Cahier de Textes)</h2>
-            <p style="color:var(--muted)">Devoirs et révisions de la classe : <b style="color:var(--blue)">${h(classeNom)}</b></p>
+            <p style="color:var(--lk-muted)">Devoirs et révisions de la classe : <b style="color:var(--lk-blue)">${h(classeNom)}</b></p>
           </div>
           ${selectorHtml}
         </div>
@@ -833,7 +967,7 @@ app.get("/devoirs", async (req, res) => {
     res.send(layout(`Devoirs - ${classeNom}`, content, req));
   } catch (e) {
     console.error("ERREUR DEVOIRS:", e.message);
-    res.status(500).send(layout("Erreur", `<section class='card'><h2>Erreur d'affichage des devoirs</h2><p style='color:var(--danger)'>${h(e.message)}</p></section>`, req));
+    res.status(500).send(layout("Erreur", `<section class='card'><h2>Erreur d'affichage des devoirs</h2><p style='color:#dc2626'>${h(e.message)}</p></section>`, req));
   }
 });
 
@@ -897,7 +1031,7 @@ app.get("/admin/appel", requireStaff, async (req, res) => {
               <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;image-rendering:-webkit-optimize-contrast;">
               <div>
                 <b>${h(s.nom)} ${h(s.prenom)}</b>
-                <div style="font-size:.78rem;color:var(--muted)">${h(s.code_eleve)}</div>
+                <div style="font-size:.78rem;color:var(--lk-muted)">${h(s.code_eleve)}</div>
               </div>
             </div>
           </td>
@@ -918,7 +1052,7 @@ app.get("/admin/appel", requireStaff, async (req, res) => {
 
       <section class="card">
         <h2>📝 Prise d'Appel / Fiche de Présence</h2>
-        <p style="color:var(--muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
+        <p style="color:var(--lk-muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
         
         <form method="get" action="/admin/appel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;background:#f8fafc;padding:12px;border-radius:10px">
           <div style="flex:1;min-width:180px">
@@ -975,7 +1109,7 @@ app.get("/admin", requireAdmin, async (req, res) => {
   const content = `
     <div class="card">
       <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-      <p style="color:var(--muted)">Sélectionnez la sous-page administrative de votre choix :</p>
+      <p style="color:var(--lk-muted)">Sélectionnez la sous-page administrative de votre choix :</p>
     </div>
 
     <div class="tile-grid">
@@ -1050,7 +1184,7 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
         <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
       </div>
 
-      <section class="card" style="border:2px solid var(--blue);background:#eff6ff">
+      <section class="card" style="border:2px solid var(--lk-blue);background:#eff6ff">
         <h2>🏫 Ajouter une Nouvelle Classe</h2>
         <form method="post" action="/admin/classe">${csrfField(req)}
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
@@ -1189,7 +1323,7 @@ app.get("/admin/staff", requireAdmin, async (req, res) => {
         <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
       </div>
 
-      <section class="card" style="border:2px solid var(--blue)">
+      <section class="card" style="border:2px solid var(--lk-blue)">
         <h2>👑 Créer un Compte Staff / Admin / Prof</h2>
         <form method="post" action="/admin/utilisateur">${csrfField(req)}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1231,12 +1365,12 @@ app.get("/admin/annonces", requireAdmin, async (req, res) => {
     const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC").catch(() => ({ rows: [] }));
 
     const annoncesHtml = annonces.rows.map(a => `
-      <div style="border-left:4px solid var(--blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
-        <strong style="color:var(--navy);font-size:1rem;display:block">${h(a.titre)}</strong>
-        <span style="font-size:.78rem;color:var(--muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
+      <div style="border-left:4px solid var(--lk-blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
+        <strong style="color:var(--lk-navy);font-size:1rem;display:block">${h(a.titre)}</strong>
+        <span style="font-size:.78rem;color:var(--lk-muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
         <p style="margin-top:6px;font-size:.9rem;color:#334155">${h(a.contenu)}</p>
       </div>
-    `).join("") || "<p style='color:var(--muted)'>Aucune annonce publiée.</p>";
+    `).join("") || "<p style='color:var(--lk-muted)'>Aucune annonce publiée.</p>";
 
     const content = `
       <div style="margin-bottom:15px">
@@ -1375,8 +1509,8 @@ app.get("/galerie", async (req, res) => {
       <div class="gallery-card">
         <img src="${h(p.photo_base64)}" class="gallery-img" alt="${h(p.titre)}" onerror="this.src='https://via.placeholder.com/300?text=Image+Indisponible'">
         <div class="gallery-body">
-          <strong style="color:var(--navy);display:block">${h(p.titre)}</strong>
-          <span style="font-size:.75rem;color:var(--muted)">Publié le ${dateFr(p.date_fmt)}</span>
+          <strong style="color:var(--lk-navy);display:block">${h(p.titre)}</strong>
+          <span style="font-size:.75rem;color:var(--lk-muted)">Publié le ${dateFr(p.date_fmt)}</span>
           ${isAdmin ? `
             <form method="post" action="/admin/galerie/supprimer" style="margin-top:8px">
               ${csrfField(req)}
@@ -1385,12 +1519,12 @@ app.get("/galerie", async (req, res) => {
             </form>` : ''}
         </div>
       </div>
-    `).join("") || "<p style='color:var(--muted);grid-column:1/-1;text-align:center;padding:20px'>Aucune photo dans la galerie pour le moment.</p>";
+    `).join("") || "<p style='color:var(--lk-muted);grid-column:1/-1;text-align:center;padding:20px'>Aucune photo dans la galerie pour le moment.</p>";
 
     let uploadFormHtml = "";
     if (isAdmin) {
       uploadFormHtml = `
-        <section class="card" style="border:2px dashed var(--blue);background:#eff6ff;margin-bottom:20px">
+        <section class="card" style="border:2px dashed var(--lk-blue);background:#eff6ff;margin-bottom:20px">
           <h2 style="margin-bottom:10px">📸 Ajouter une Photo à la Galerie</h2>
           <form method="post" action="/admin/galerie">
             ${csrfField(req)}
@@ -1424,7 +1558,7 @@ app.get("/galerie", async (req, res) => {
     const content = `
       <div class="card">
         <h2>📸 Galerie Scolaire — LEKOL S&amp;H</h2>
-        <p style="color:var(--muted)">Retrouvez en images les événements et activités de l'établissement.</p>
+        <p style="color:var(--lk-muted)">Retrouvez en images les événements et activités de l'établissement.</p>
       </div>
       
       ${uploadFormHtml}
@@ -1483,7 +1617,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
         </div>
         <div class="badge-footer">
           <span>Année Académique 2026-2027</span>
-          <span style="font-weight:800;color:var(--gold)">VALIDÉ ✓</span>
+          <span style="font-weight:800;color:var(--lk-gold)">VALIDÉ ✓</span>
         </div>
       </div>
 
@@ -1515,9 +1649,9 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
       </script>
 
       <div class="tile-grid">
-        <div class="stat-box"><div class="stat-value" style="color:var(--danger)">${absCount}</div><div class="stat-label">Absences</div></div>
-        <div class="stat-box"><div class="stat-value" style="color:var(--gold)">${retCount}</div><div class="stat-label">Retards</div></div>
-        <div class="stat-box"><div class="stat-value">${notes.rows.length}</div><div class="stat-label">Devoirs &amp; Notes</div></div>
+        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#dc2626">${absCount}</div><div class="tile-desc">Absences</div></div>
+        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:var(--lk-gold)">${retCount}</div><div class="tile-desc">Retards</div></div>
+        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:var(--lk-blue)">${notes.rows.length}</div><div class="tile-desc">Devoirs &amp; Notes</div></div>
       </div>
 
       <section class="card">
@@ -1532,7 +1666,7 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
                 <tr>
                   <td><b>${h(n.matiere)}</b></td>
                   <td><span class="excel-badge">${h(n.type_eval)}</span></td>
-                  <td><strong style="color:var(--blue)">${h(n.note)}</strong> / ${h(n.total_max)}</td>
+                  <td><strong style="color:var(--lk-blue)">${h(n.note)}</strong> / ${h(n.total_max)}</td>
                   <td>${h(n.periode)}</td>
                 </tr>
               `).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucune note disponible.</td></tr>"}
@@ -1569,7 +1703,7 @@ app.get("/horaire", async (req, res) => {
       const content = `
         <section class="card" style="text-align:center;padding:40px 20px;">
           <h2>🔒 Espace Sécurisé</h2>
-          <p style="color:var(--muted);margin:10px 0 20px">Veuillez vous connecter pour consulter l'emploi du temps des classes.</p>
+          <p style="color:var(--lk-muted);margin:10px 0 20px">Veuillez vous connecter pour consulter l'emploi du temps des classes.</p>
           <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter</a>
         </section>`;
       return res.send(layout("Connexion Requise", content, req));
@@ -1616,7 +1750,7 @@ app.get("/horaire", async (req, res) => {
       const coursJour = horaires.rows.filter(h => h.jour.toLowerCase() === j.toLowerCase());
       return `
         <div style="margin-bottom:20px">
-          <div style="background:var(--blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;display:flex;justify-content:space-between;align-items:center">
+          <div style="background:var(--lk-blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;display:flex;justify-content:space-between;align-items:center">
             <span>${j}</span>
             <span style="font-size:.8rem;font-weight:600;opacity:.9">${coursJour.length} cours</span>
           </div>
@@ -1648,7 +1782,7 @@ app.get("/horaire", async (req, res) => {
                         </form>
                       </td>` : ""}
                   </tr>
-                `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
+                `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--lk-muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
               </tbody>
             </table>
           </div>
@@ -1658,8 +1792,8 @@ app.get("/horaire", async (req, res) => {
     let adminFormHtml = "";
     if (isAdmin) {
       adminFormHtml = `
-        <section class="card" style="border:2px dashed var(--blue);background:#eff6ff">
-          <h3 style="color:var(--navy);margin-bottom:10px">➕ Ajouter un créneau d'horaire pour : <span style="color:var(--blue)">${h(classeNom)}</span></h3>
+        <section class="card" style="border:2px dashed var(--lk-blue);background:#eff6ff">
+          <h3 style="color:var(--lk-navy);margin-bottom:10px">➕ Ajouter un créneau d'horaire pour : <span style="color:var(--lk-blue)">${h(classeNom)}</span></h3>
           <form method="post" action="/admin/horaire/ajouter">${csrfField(req)}
             <input type="hidden" name="classe_id" value="${selectedClasseId}">
             
@@ -1691,7 +1825,7 @@ app.get("/horaire", async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
           <div>
             <h2>📅 Horaire &amp; Emploi du Temps</h2>
-            <p style="color:var(--muted)">Emploi du temps officiel : <b style="color:var(--blue)">${h(classeNom)}</b></p>
+            <p style="color:var(--lk-muted)">Emploi du temps officiel : <b style="color:var(--lk-blue)">${h(classeNom)}</b></p>
           </div>
           ${classSelectHtml}
         </div>
@@ -1732,7 +1866,7 @@ app.get("/connexion", (req, res) => {
   const content = `
     <section class="card" style="max-width:380px;margin:20px auto">
       <h2>🔑 Connexion</h2>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:15px">Entrez votre code (ex: S&amp;H-XXXX), e-mail ou identifiant.</p>
+      <p style="color:var(--lk-muted);font-size:.85rem;margin-bottom:15px">Entrez votre code (ex: S&amp;H-XXXX), e-mail ou identifiant.</p>
       <form method="post" action="/connexion">${csrfField(req)}
         <label>Identifiant / Code / E-mail</label>
         <input name="identifiant" required placeholder="Ex. S&amp;H-1234 ou admin">
@@ -1759,7 +1893,7 @@ app.post("/connexion", loginLimiter, async (req, res) => {
     const user = rows[0];
 
     if (!user || !(await bcrypt.compare(password, user.mot_de_passe).catch(() => user.mot_de_passe === password))) {
-      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--muted);margin:10px 0'>Vérifiez vos accès.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
+      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--lk-muted);margin:10px 0'>Vérifiez vos accès.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
     }
 
     req.session.user = { id: user.id, nom: user.nom, prenom: user.prenom, role: user.role, classe_id: user.classe_id, photo_url: user.photo_url };
@@ -1818,11 +1952,11 @@ app.get("/calendrier", async (req, res) => {
     const activitesMois = planScolaire2026[keyMonth] || [];
 
     let eventsHtml = activitesMois.map(act => `
-      <div style="border-left:4px solid var(--gold);padding:10px 14px;background:#fff8e6;border-radius:0 8px 8px 0;margin-bottom:10px">
-        <strong style="color:var(--navy);font-size:.95rem;display:block">📌 ${h(act.titre)}</strong>
+      <div style="border-left:4px solid var(--lk-gold);padding:10px 14px;background:#fff8e6;border-radius:0 8px 8px 0;margin-bottom:10px">
+        <strong style="color:var(--lk-navy);font-size:.95rem;display:block">📌 ${h(act.titre)}</strong>
         <p style="font-size:.85rem;color:#475569;margin-top:2px">${h(act.desc)}</p>
       </div>
-    `).join("") || "<p style='color:var(--muted);font-size:.88rem'>Aucun événement particulier planifié pour ce mois.</p>";
+    `).join("") || "<p style='color:var(--lk-muted);font-size:.88rem'>Aucun événement particulier planifié pour ce mois.</p>";
 
     const prevMonth = month === 0 ? 11 : month - 1;
     const prevYear = month === 0 ? year - 1 : year;
@@ -1832,7 +1966,7 @@ app.get("/calendrier", async (req, res) => {
     const content = `
       <section class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px">
-          <h2>🗓️ Calendrier &amp; Programme Scolaire — <span style="text-transform:capitalize;color:var(--blue)">${monthName}</span></h2>
+          <h2>🗓️ Calendrier &amp; Programme Scolaire — <span style="text-transform:capitalize;color:var(--lk-blue)">${monthName}</span></h2>
           <div style="display:flex;gap:8px">
             <a href="/calendrier?year=${prevYear}&month=${prevMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">◀ Mois Précédent</a>
             <a href="/calendrier?year=${nextYear}&month=${nextMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">Mois Suivant ▶</a>
@@ -1850,14 +1984,14 @@ app.get("/calendrier", async (req, res) => {
           ${calendarCellsHtml}
         </div>
 
-        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:15px">
+        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap;border-bottom:1px solid var(--lk-line);padding-bottom:15px">
           <div class="legend-item"><span class="legend-dot" style="background:#22c55e;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Vert</b> = Présent</div>
           <div class="legend-item"><span class="legend-dot" style="background:#ef4444;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Rouge</b> = Absent</div>
           <div class="legend-item"><span class="legend-dot" style="background:#64748b;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Gris</b> = Retard</div>
         </div>
 
         <div style="margin-top:20px">
-          <h3 style="color:var(--navy);margin-bottom:12px">📅 Activités &amp; Jalons du Mois (${monthName})</h3>
+          <h3 style="color:var(--lk-navy);margin-bottom:12px">📅 Activités &amp; Jalons du Mois (${monthName})</h3>
           ${eventsHtml}
         </div>
       </section>`;
