@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
@@ -16,8 +17,11 @@ const rolesAdmin = ["ADMIN", "TITULAIRE"];
 const rolesProf = ["PROF"];
 const rolesStaff = ["ADMIN", "TITULAIRE", "PROF"];
 
+if (isProduction && (!process.env.DATABASE_URL || !process.env.SESSION_SECRET)) {
+  throw new Error("DATABASE_URL et SESSION_SECRET sont obligatoires en production.");
+}
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
-  console.error("Configure DATABASE_URL et SESSION_SECRET dans Render.");
+  console.warn("Configure DATABASE_URL et SESSION_SECRET pour utiliser toutes les fonctions.");
 }
 
 const pool = new Pool({
@@ -36,8 +40,12 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(express.json({ limit: "20mb" }));
 
-// Permet d'accéder aux fichiers statiques (comme logo.jpeg à la racine)
-app.use(express.static(__dirname));
+// Servir uniquement le logo public. Ne pas exposer tout le dossier du serveur.
+app.get("/logo.jpeg", (req, res) => {
+  res.sendFile(path.join(__dirname, "logo.jpeg"), err => {
+    if (err && !res.headersSent) res.status(404).end();
+  });
+});
 
 app.use(session({
   store: new PgSession({
@@ -46,7 +54,7 @@ app.use(session({
     createTableIfMissing: true
   }),
   name: "lekolsid",
-  secret: process.env.SESSION_SECRET || "development-only-change-this-secret",
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -77,7 +85,7 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// PLAN ANNUEL SCOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)[span_1](start_span)[span_1](end_span)
+// PLAN ANNUEL SCOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)
 const planScolaire2026 = {
   "2026-08": [
     { titre: "Inventaire & Acquisition", desc: "Achat et inventaire du matériel pour l'école primaire et le collège" },
@@ -214,6 +222,20 @@ async function initTables() {
 
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS total_max INT DEFAULT 100;
       ALTER TABLE notes ADD COLUMN IF NOT EXISTS type_eval VARCHAR(50) DEFAULT 'Contrôle';
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+        receiver_id INT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+        sujet VARCHAR(180) NOT NULL,
+        contenu TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        lu_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_receiver_created
+        ON messages(receiver_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender_created
+        ON messages(sender_id, created_at DESC);
     `);
 
     const checkClasses = await pool.query("SELECT COUNT(*) FROM classes");
@@ -225,9 +247,7 @@ async function initTables() {
   }
 }
 
-initTables();
-
-// LAYOUT RESPONSIVE & STYLE GLOBAL (LEKOL S&H — SIGNATURE DESIGN 2026)
+// LAYOUT RESPONSIVE & STYLE GLOBAL (SIGNATURE DESIGN 2026 + MOBILE PREMIUM)
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -246,6 +266,7 @@ const layout = (title, content, req) => {
                   <a href="/galerie" class="nav-item">📸 Galerie Scolaire</a>`;
 
   if (isAuth) {
+    navItems += `<a href="/messages" class="nav-item">✉️ Messagerie</a>`;
     if (rolesAdmin.includes(userRole)) {
       navItems += `<a href="/admin/appel" class="nav-item">📝 Prise d'Appel</a>
                    <a href="/admin" class="nav-item">⚙️ Panneau Direction</a>`;
@@ -255,7 +276,8 @@ const layout = (title, content, req) => {
     } else if (userRole === "PARENT") {
       navItems += `<a href="/espace-parent" class="nav-item">👪 Espace Parent</a>`;
     } else if (userRole === "ELEVE") {
-      navItems += `<a href="/espace-eleve" class="nav-item">👨‍🎓 Mon Dossier &amp; Badge</a>`;
+      navItems += `<a href="/espace-eleve" class="nav-item">👨‍🎓 Mon Dossier &amp; Badge</a>
+                   <a href="/bulletin" class="nav-item">📊 Mon Bulletin</a>`;
     }
   } else {
     navItems += `<a href="/connexion" class="nav-item">🔑 Se Connecter</a>`;
@@ -270,7 +292,7 @@ const layout = (title, content, req) => {
 <title>${h(title)} — LEKOL S&amp;H</title>
 <style>
 /* ==================================================
-   LEKOL S&H — SIGNATURE DESIGN 2026
+   LEKOL S&H — SIGNATURE DESIGN 2026 + MOBILE PREMIUM
 ================================================== */
 
 :root {
@@ -289,6 +311,15 @@ const layout = (title, content, req) => {
   --sidebar-w: 260px;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -304,6 +335,8 @@ body {
   display: flex;
   min-height: 100vh;
   margin: 0;
+  overflow-wrap: anywhere;
+  -webkit-text-size-adjust: 100%;
 }
 
 ::selection {
@@ -475,12 +508,9 @@ button {
   border-radius: 12px; padding: 12px 19px;
   font: inherit; font-weight: 700; letter-spacing: .05px;
   text-decoration: none; cursor: pointer; text-align: center;
-  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-}
-
-.btn:not(.secondary),
-button[type="submit"] {
+  min-height: 44px; max-width: 100%;
   box-shadow: 0 5px 14px rgba(40,91,234,.13);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
 }
 
 .btn:hover,
@@ -503,12 +533,14 @@ input,
 select,
 textarea {
   width: 100%;
+  min-height: 44px;
   background-color: #fff;
   color: var(--lk-text);
   border: 1px solid #dce3ef;
   border-radius: 12px;
   padding: 12px 15px;
   font: inherit;
+  max-width: 100%;
 }
 
 input::placeholder,
@@ -524,18 +556,24 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(40,91,234,.09);
 }
 
+table {
+  max-width: 100%;
+}
+
 .excel-table-container {
   overflow-x: auto; -webkit-overflow-scrolling: touch;
   border: 1px solid var(--lk-line);
   border-radius: 16px;
   background: #fff;
   margin-top: 10px;
+  max-width: 100%;
 }
 
 .excel-table {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%; font-size: .88rem; min-width: 500px;
+  max-width: 100%;
 }
 
 .excel-table th {
@@ -599,7 +637,7 @@ textarea:focus {
 
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
 .gallery-card { padding: 0; overflow: hidden; }
-.gallery-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--lk-line); image-rendering: -webkit-optimize-contrast; }
+.gallery-img { width: 100%; height: 180px; object-fit: contain; border-bottom: 1px solid var(--lk-line); image-rendering: -webkit-optimize-contrast; }
 .gallery-body { padding: 14px; }
 
 .calendar-grid { 
@@ -624,28 +662,85 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
   .toggle-btn { display: block; }
   .close-sidebar-btn { display: block; }
 
-  main.content { padding: 20px 15px; }
-  .card { padding: 20px; border-radius: 17px; }
-  .tile-grid { gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tile { padding: 18px; border-radius: 17px; }
+  main.content {
+    width: 100%;
+    min-width: 0;
+    padding: 14px 11px;
+  }
+
+  .card {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 16px;
+  }
+
+  .tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+  }
+
+  .tile {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .excel-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .excel-table {
+    min-width: 560px;
+  }
+
+  form input,
+  form select,
+  form textarea {
+    width: 100%;
+  }
+
+  button,
+  .btn {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  img {
+    object-fit: contain;
+  }
 }
 
-@media (max-width: 480px) {
-  .tile-grid { grid-template-columns: 1fr; }
-  main.content { padding: 13px 10px; }
-  .card { padding: 16px; margin-bottom: 16px; }
-  .tile { padding: 15px; }
-  input, select, textarea { max-width: 100%; }
-  .excel-table th, .excel-table td { padding: 11px; }
+@media (max-width: 380px) {
+  .tile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  main.content {
+    padding: 10px 8px;
+  }
+
+  .card {
+    padding: 13px;
+  }
 }
 
+@media print {
+  body { background: #fff !important; display: block !important; }
+  .sidebar, header.topbar, .no-print { display: none !important; }
+  .main-wrapper { margin: 0 !important; width: 100% !important; }
+  main.content { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+  table { width: 100% !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
@@ -738,6 +833,22 @@ app.use((req, res, next) => {
     }
   }
   next();
+});
+
+
+// ESPACE PROFESSEUR — corrige le lien de redirection utilisé à la connexion
+app.get("/prof", requireStaff, (req, res) => {
+  if (!rolesProf.includes(req.session.user.role)) return res.redirect(getHomeByRole(req.session.user.role));
+  const content = `
+    <section class="card"><h1>👨‍🏫 Espace Professeur</h1>
+      <p>Accès rapide aux outils pédagogiques de LEKOL S&amp;H.</p></section>
+    <div class="tile-grid">
+      <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Devoirs &amp; Leçons</div><div class="tile-desc">Publier et consulter le cahier de textes.</div></a>
+      <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'appel</div><div class="tile-desc">Enregistrer les présences des élèves.</div></a>
+      <a href="/admin/notes" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Saisie des notes</div><div class="tile-desc">Enregistrer les évaluations.</div></a>
+      <a href="/messages" class="tile"><div class="tile-icon">✉️</div><div class="tile-title">Messagerie</div><div class="tile-desc">Communiquer avec les membres autorisés.</div></a>
+    </div>`;
+  res.send(layout("Espace Professeur", content, req));
 });
 
 // ROUTE ACCUEIL
@@ -1499,6 +1610,93 @@ app.post("/admin/note", requireStaff, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur note."); }
 });
 
+
+// MESSAGERIE INTERNE — seuls les utilisateurs connectés peuvent lire leurs messages
+app.get("/messages", async (req, res) => {
+  if (!req.session.user) return res.redirect("/connexion");
+  const current = req.session.user;
+  try {
+    await pool.query("UPDATE messages SET lu_at=NOW() WHERE receiver_id=$1 AND lu_at IS NULL", [current.id]);
+    const recipients = rolesStaff.includes(current.role)
+      ? await pool.query("SELECT id, nom, prenom, role FROM utilisateurs WHERE id<>$1 ORDER BY nom, prenom", [current.id])
+      : await pool.query("SELECT id, nom, prenom, role FROM utilisateurs WHERE role = ANY($1::text[]) AND id<>$2 ORDER BY nom, prenom", [rolesStaff, current.id]);
+    const inbox = await pool.query(`
+      SELECT m.id, m.sujet, m.contenu, m.created_at, m.lu_at,
+             u.nom AS autre_nom, u.prenom AS autre_prenom, u.role AS autre_role
+      FROM messages m JOIN utilisateurs u ON u.id=m.sender_id
+      WHERE m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 100
+    `, [current.id]);
+    const sent = await pool.query(`
+      SELECT m.id, m.sujet, m.contenu, m.created_at,
+             u.nom AS autre_nom, u.prenom AS autre_prenom, u.role AS autre_role
+      FROM messages m JOIN utilisateurs u ON u.id=m.receiver_id
+      WHERE m.sender_id=$1 ORDER BY m.created_at DESC LIMIT 100
+    `, [current.id]);
+    const recipientOptions = recipients.rows.map(u =>
+      `<option value="${u.id}">${h(u.prenom)} ${h(u.nom)} — ${h(u.role)}</option>`
+    ).join("");
+    const inboxHtml = inbox.rows.map(m => `
+      <article class="devoir-card">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <strong>${h(m.sujet)}</strong><span class="excel-badge">${h(m.autre_role)}</span>
+        </div>
+        <p style="color:var(--lk-muted);font-size:.82rem">De : ${h(m.autre_prenom)} ${h(m.autre_nom)} · ${dateFr(m.created_at)}</p>
+        <p style="white-space:pre-wrap">${h(m.contenu)}</p>
+      </article>`).join("") || "<p>Aucun message reçu pour le moment.</p>";
+    const sentHtml = sent.rows.map(m => `
+      <article class="devoir-card">
+        <strong>${h(m.sujet)}</strong>
+        <p style="color:var(--lk-muted);font-size:.82rem">À : ${h(m.autre_prenom)} ${h(m.autre_nom)} (${h(m.autre_role)}) · ${dateFr(m.created_at)}</p>
+        <p style="white-space:pre-wrap">${h(m.contenu)}</p>
+      </article>`).join("") || "<p>Aucun message envoyé.</p>";
+    const content = `
+      <section class="card"><h1>✉️ Messagerie LEKOL S&amp;H</h1>
+        <p style="color:var(--lk-muted)">Échangez avec la direction, les professeurs et les membres autorisés de l'école.</p>
+      </section>
+      <section class="card"><h2>✍️ Nouveau message</h2>
+        <form method="post" action="/messages/envoyer">${csrfField(req)}
+          <label>Destinataire</label>
+          <select name="receiver_id" required><option value="">Choisir un destinataire</option>${recipientOptions}</select>
+          <label>Objet</label><input name="sujet" maxlength="180" required placeholder="Objet du message">
+          <label>Message</label><textarea name="contenu" rows="5" maxlength="5000" required placeholder="Écrivez votre message..."></textarea>
+          <button class="btn" type="submit">Envoyer le message</button>
+        </form>
+      </section>
+      <section class="card"><h2>📥 Messages reçus</h2>${inboxHtml}</section>
+      <section class="card"><h2>📤 Messages envoyés</h2>${sentHtml}</section>`;
+    res.send(layout("Messagerie", content, req));
+  } catch (e) {
+    console.error("Erreur messagerie:", e.message);
+    res.status(500).send(layout("Messagerie", "<section class='card'><h2>Messagerie indisponible</h2><p>Vérifiez la base de données et réessayez.</p></section>", req));
+  }
+});
+
+app.post("/messages/envoyer", async (req, res) => {
+  if (!req.session.user) return res.redirect("/connexion");
+  const sender = req.session.user;
+  const receiverId = Number(req.body.receiver_id);
+  const sujet = String(req.body.sujet || "").trim();
+  const contenu = String(req.body.contenu || "").trim();
+  if (!Number.isInteger(receiverId) || receiverId <= 0 || !sujet || !contenu ||
+      sujet.length > 180 || contenu.length > 5000) {
+    return res.status(400).send(layout("Message invalide",
+      "<section class='card'><h2>Message non envoyé</h2><p>Vérifiez le destinataire, l'objet et le contenu (maximum 5 000 caractères).</p><a class='btn' href='/messages'>Retour à la messagerie</a></section>", req));
+  }
+  try {
+    const target = await pool.query("SELECT id, role FROM utilisateurs WHERE id=$1", [receiverId]);
+    if (!target.rows[0] || receiverId === Number(sender.id)) return res.status(400).send("Destinataire invalide.");
+    if (!rolesStaff.includes(sender.role) && !rolesStaff.includes(target.rows[0].role)) {
+      return res.status(403).send("Vous pouvez uniquement écrire au personnel de l'école.");
+    }
+    await pool.query("INSERT INTO messages (sender_id, receiver_id, sujet, contenu) VALUES ($1,$2,$3,$4)",
+      [Number(sender.id), receiverId, sujet, contenu]);
+    res.redirect("/messages");
+  } catch (e) {
+    console.error("Erreur envoi message:", e.message);
+    res.status(500).send("Impossible d'envoyer le message pour le moment.");
+  }
+});
+
 // ROUTE GALERIE SCOLAIRE
 app.get("/galerie", async (req, res) => {
   try {
@@ -1589,7 +1787,98 @@ app.post("/admin/galerie/supprimer", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur suppression photo."); }
 });
 
-// DOSSIER ÉLÈVE
+// ESPACE PARENT
+app.get("/espace-parent", (req, res) => {
+  if (!req.session.user) return res.redirect("/connexion");
+  if (req.session.user.role !== "PARENT") return res.redirect(getHomeByRole(req.session.user.role));
+  const content = `
+    <section class="card">
+      <h1>👪 Espace Parent</h1>
+      <p>Votre compte est connecté, mais il n'est pas encore associé à un dossier élève dans la base de données.</p>
+      <p>Demandez à la direction de confirmer l'association de votre compte au dossier de votre enfant avant d'afficher ses notes et présences.</p>
+      <a class="btn" href="/messages">✉️ Contacter l'école</a>
+    </section>`;
+  res.send(layout("Espace Parent", content, req));
+});
+
+// RELEVÉ DE NOTES IMPRIMABLE[span_1](start_span)[span_1](end_span)
+app.get("/bulletin", async (req, res) => {
+  if (!req.session.user) return res.redirect("/connexion");
+  const current = req.session.user;
+  let studentId = Number(req.query.eleve_id || 0);
+  if (current.role === "ELEVE") studentId = Number(current.id);
+  else if (!rolesStaff.includes(current.role)) {
+    return res.status(403).send(layout("Accès refusé",
+      "<section class='card'><h2>Accès non disponible</h2><p>Le compte parent doit être associé à un élève avant de pouvoir consulter son bulletin.</p></section>", req));
+  }
+  try {
+    if (rolesStaff.includes(current.role) && !studentId) {
+      const students = await pool.query("SELECT id, nom, prenom, code_eleve FROM utilisateurs WHERE role='ELEVE' ORDER BY nom, prenom");
+      const options = students.rows.map(s => `<option value="${s.id}">${h(s.prenom)} ${h(s.nom)} — ${h(s.code_eleve || "")}</option>`).join("");
+      const content = `<section class="card"><h1>📊 Relevés de notes</h1>
+        <form method="get" action="/bulletin"><label>Choisir un élève</label>
+          <select name="eleve_id" required><option value="">Sélectionner...</option>${options}</select>
+          <button class="btn" type="submit">Afficher le relevé</button></form></section>`;
+      return res.send(layout("Relevés de notes", content, req));
+    }
+    const studentResult = await pool.query(`
+      SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe
+      FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id
+      WHERE u.id=$1 AND u.role='ELEVE'
+    `, [studentId]);
+    const student = studentResult.rows[0];
+    if (!student) return res.status(404).send(layout("Élève introuvable",
+      "<section class='card'><h2>Élève introuvable</h2><a class='btn' href='/bulletin'>Retour</a></section>", req));
+    const notesResult = await pool.query(`
+      SELECT matiere, note, COALESCE(total_max,100) AS total_max,
+             COALESCE(type_eval,'Contrôle') AS type_eval, periode, date_saisie
+      FROM notes WHERE eleve_id=$1 ORDER BY date_saisie ASC
+    `, [studentId]).catch(() => ({ rows: [] }));
+    const notes = notesResult.rows;
+    const percentages = notes.map(n => {
+      const max = Number(n.total_max) || 100;
+      return max > 0 ? (Number(n.note) / max) * 100 : null;
+    }).filter(v => Number.isFinite(v));
+    const average = percentages.length
+      ? (percentages.reduce((a,b) => a+b, 0) / percentages.length).toFixed(2) : null;
+    const rows = notes.map(n => {
+      const max = Number(n.total_max) || 100;
+      const score = Number(n.note);
+      const pct = max > 0 ? ((score / max) * 100).toFixed(2) + "%" : "—";
+      return `<tr><td>${h(n.matiere)}</td><td>${h(n.type_eval)}</td>
+        <td>${Number.isFinite(score) ? score : "—"}</td><td>${max}</td>
+        <td>${pct}</td><td>${h(n.periode || "—")}</td></tr>`;
+    }).join("") || "<tr><td colspan='6'>Aucune note enregistrée.</td></tr>";
+    const content = `
+      <section class="card">
+        <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+          <a href="/bulletin" class="btn secondary">← Retour</a>
+          <button class="btn" type="button" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+        </div>
+        <div style="text-align:center;border-bottom:2px solid var(--lk-gold);padding:10px 0 18px;margin-bottom:18px">
+          <h1 style="margin:0;color:var(--lk-navy)">LEKOL S&amp;H</h1>
+          <p style="margin:4px 0;color:var(--lk-muted)">Relevé de notes — aperçu imprimable</p>
+        </div>
+        <h2>Informations de l'élève</h2>
+        <p><strong>Nom :</strong> ${h(student.prenom)} ${h(student.nom)}</p>
+        <p><strong>Code élève :</strong> ${h(student.code_eleve || "—")}</p>
+        <p><strong>Classe :</strong> ${h(student.nom_classe || "Non assignée")}</p>
+        <div class="excel-table-container"><table class="excel-table">
+          <thead><tr><th>Matière</th><th>Évaluation</th><th>Note</th><th>Sur</th><th>Pourcentage</th><th>Période</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>
+        <div style="margin-top:18px;padding:15px;background:#f8fafc;border-radius:12px">
+          <strong>Moyenne simple des évaluations normalisée sur 100 :</strong>
+          <span style="font-size:1.25rem;color:var(--lk-blue);font-weight:800">${average === null ? "Non disponible" : average + "%"}</span>
+          <p style="font-size:.8rem;color:var(--lk-muted);margin-bottom:0">Aperçu calculé à partir des notes enregistrées. Il ne remplace pas un bulletin officiel validé par la direction.</p>
+        </div>
+      </section>`;
+    res.send(layout("Relevé de notes", content, req));
+  } catch (e) {
+    console.error("Erreur relevé de notes:", e.message);
+    res.status(500).send(layout("Erreur", "<section class='card'><h2>Impossible d'afficher le relevé de notes.</h2></section>", req));
+  }
+});
+
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   const id = req.session.user.id;
   try {
@@ -1602,6 +1891,10 @@ app.get("/espace-eleve", requireStudent, async (req, res) => {
     const photoUrl = student.photo_url || "https://via.placeholder.com/100";
 
     const content = `
+      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <a class="btn" href="/bulletin">📊 Consulter mon bulletin</a>
+        <a class="btn secondary" href="/messages">✉️ Mes messages</a>
+      </div>
       <div class="student-badge-card">
         <div class="badge-header">
           <div class="badge-school">🎓 LEKOL S&amp;H</div>
@@ -2004,6 +2297,7 @@ app.use((req, res) => res.status(404).send("Page introuvable."));
 
 async function start() {
   try {
+    await initTables();
     await pool.query("SELECT 1");
     app.listen(port, () => console.log(`🚀 LEKOL S&H prêt sur le port ${port}`));
   } catch (e) {
