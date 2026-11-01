@@ -110,7 +110,7 @@ const eleves1eA = [
   { nom: "SAINT-FLEUR", prenom: "Ethmaëlle", code: "S&H-1A26", mere: "Célestin Marianite", tel: "3331-5476" }
 ];
 
-// LISTE OFFICIELLE 1ère ANNÉE B (Exactement 26 élèves)[cite: 24]
+// LISTE OFFICIELLE 1ère ANNÉE B (26 élèves)[cite: 24]
 const eleves1eB = [
   { nom: "AUGUSTIN", prenom: "Jemima", code: "S&H-1B01", mere: "Germanie Grégoire", tel: "5517-2743" },
   { nom: "BRENORD", prenom: "Weed Lorensky W.", code: "S&H-1B02", mere: "Onard Wilnise", tel: "3262-0343" },
@@ -138,6 +138,64 @@ const eleves1eB = [
   { nom: "SINSMYR", prenom: "Malaïca", code: "S&H-1B24", mere: "George Rose Merlande", tel: "3944-3314" },
   { nom: "TREVOL", prenom: "Fredly Carl-Tensky", code: "S&H-1B25", mere: "Sypain Velouse", tel: "3648-1723 / 4720-6424" },
   { nom: "VIXAMAR", prenom: "Guerlangélita", code: "S&H-1B26", mere: "Mathieu Guerlande", tel: "3502-8166" }
+];
+
+// LISTE OFFICIELLE 2ème ANNÉE A (25 élèves)[cite: 26]
+const eleves2eA = [
+  { nom: "CELIMAR", prenom: "Gamaliel Gerardo", code: "S&H-2A01", mere: "Louis Ruth", tel: "4155-1034" },
+  { nom: "CESAR", prenom: "Esther", code: "S&H-2A02", mere: "Rose Andre Charles C", tel: "5601-2500" },
+  { nom: "CHERENFANT", prenom: "Andy E", code: "S&H-2A03", mere: "Daniela Cherenfant", tel: "4169-9164" },
+  { nom: "CLERPHE", prenom: "Rod-Hansley", code: "S&H-2A04", mere: "Abel N. Moselene", tel: "3238-6330 / 3394-0787" },
+  { nom: "ELIANE", prenom: "Joyce Polo Sandrina", code: "S&H-2A05", mere: "Jn-Charles Sandre", tel: "4117-5402" },
+  { nom: "ETIENNE", prenom: "Djouvensa Mayard", code: "S&H-2A06", mere: "Auguste Suze", tel: "4077-8655" },
+  { nom: "FELIX", prenom: "Anders Franderly", code: "S&H-2A07", mere: "Jean Keldjina", tel: "3326-3597" },
+  { nom: "FUCIEN", prenom: "Jamescar", code: "S&H-2A08", mere: "Metellus Carmelle", tel: "3162-4767" },
+  { nom: "JEAN ANGE", prenom: "Thamar Kendaëlle", code: "S&H-2A09", mere: "Joseph Angenie", tel: "4282-2968" },
+  { nom: "JEAN MONTIMER", prenom: "Valery", code: "S&H-2A10", mere: "Parvilus Claudia", tel: "3282-0128" },
+  { nom: "JEAN TED ASHLEY", prenom: "Matéo", code: "S&H-2A11", mere: "Etienne Mahana", tel: "5651-4243 / 4897-3645" },
+  { nom: "JOSEPH", prenom: "Joe Jacky", code: "S&H-2A12", mere: "Delhomme Darline", tel: "3595-4590" },
+  { nom: "LAURORE", prenom: "Ruth Shama", code: "S&H-2A13", mere: "Olivier Mirielle", tel: "3937-7620 / 4255-7672" },
+  { nom: "LOUIS", prenom: "Dabentz", code: "S&H-2A14", mere: "Alcius Yslande", tel: "4301-7772" },
+  { nom: "LOUIS", prenom: "Dardy Ezéchiel", code: "S&H-2A15", mere: "Sidonis Darline", tel: "3587-1626" },
+  { nom: "LOUIS GEORGES", prenom: "Gabriella", code: "S&H-2A16", mere: "Pierre Jasmine L.G", tel: "3854-3998" },
+  { nom: "LUCIEN", prenom: "Frantz Shynayder", code: "S&H-2A17", mere: "Gédéon Dalandie", tel: "3266-9532" },
+  { nom: "ORELUS", prenom: "Aslin", code: "S&H-2A18", mere: "Madelle Casimir Orelus", tel: "4014-0212" },
+  { nom: "PIERRE", prenom: "Jessy Hansa", code: "S&H-2A19", mere: "Phanor Mervelaine", tel: "3328-1509" },
+  { nom: "PIVERGER", prenom: "Lynn Prisca", code: "S&H-2A20", mere: "Previle Judith", tel: "3399-3137" },
+  { nom: "PRÉDESTIN", prenom: "Youmica", code: "S&H-2A21", mere: "Kettie Jean", tel: "4225-5211" },
+  { nom: "PRÉSUME", prenom: "Marckly Joe Zach", code: "S&H-2A22", mere: "Phania Moise P.", tel: "3214-5062" },
+  { nom: "SAINT-FORT", prenom: "JacqueCevens", code: "S&H-2A23", mere: "Filemond Judelene", tel: "4090-9736" },
+  { nom: "THIMOLÉON", prenom: "Steph", code: "S&H-2A24", mere: "Paula Cleunie", tel: "4149-7070" },
+  { nom: "THIMOTHEE", prenom: "Kerry Ervin", code: "S&H-2A25", mere: "Daphne St Fleur", tel: "4378-0282" }
+];
+
+// LISTE OFFICIELLE 2ème ANNÉE B (25 élèves)[cite: 28]
+const eleves2eB = [
+  { nom: "ANTOINE", prenom: "Marx Dony H.", code: "S&H-2B01", mere: "Jean Charles Sophonie", tel: "3894-1767 / 4823-8857" },
+  { nom: "ARMAND", prenom: "Leyscha", code: "S&H-2B02", mere: "Imera Stael Dayana", tel: "5534-8443" },
+  { nom: "BELAMOUR", prenom: "Lentz-Malaika", code: "S&H-2B03", mere: "Joseph Rodeline", tel: "4001-6767" },
+  { nom: "BIEN-AIMÉ", prenom: "Marck Jhon Kelly", code: "S&H-2B04", mere: "Romage Chirosky", tel: "4907-0168" },
+  { nom: "BRUTUS", prenom: "Ella Amara", code: "S&H-2B05", mere: "Hypolite Lore Naica", tel: "3784-8120" },
+  { nom: "CALIXTE", prenom: "Ashley-Cole", code: "S&H-2B06", mere: "Jean Islande", tel: "4141-4832" },
+  { nom: "CHARLES", prenom: "Ruthdjirsie", code: "S&H-2B07", mere: "Philogene Ritha", tel: "3588-0155" },
+  { nom: "CINA", prenom: "Daphnaëlle", code: "S&H-2B08", mere: "Davilmar Daphney", tel: "4285-3311" },
+  { nom: "ELIANÉ", prenom: "Greyce polosand", code: "S&H-2B09", mere: "Jn-Charles Sandre", tel: "4117-5402" },
+  { nom: "ESTIMABLE", prenom: "Hans Ashley", code: "S&H-2B10", mere: "Celestin Linda", tel: "3874-4935" },
+  { nom: "EUGÈNE", prenom: "Prince Weddersone", code: "S&H-2B11", mere: "Charles Sylvie", tel: "5570-1603" },
+  { nom: "GEORGES", prenom: "Yaelle Carlidjourie C.", code: "S&H-2B12", mere: "Lafleur Cynthia", tel: "4154-1514" },
+  { nom: "GERVAIS", prenom: "Vitanae", code: "S&H-2B13", mere: "Joseph Agalande", tel: "3371-9400" },
+  { nom: "JEAN JACQUES", prenom: "Sanderline", code: "S&H-2B14", mere: "Pierre Atrice", tel: "4389-2172" },
+  { nom: "JEAN LOUIS", prenom: "Serge Darly", code: "S&H-2B15", mere: "Thélusma Rose-Darline", tel: "3385-9309" },
+  { nom: "JOSEPH", prenom: "Ezéchiel", code: "S&H-2B16", mere: "Charles Kettia", tel: "4037-8277" },
+  { nom: "LAMOUR", prenom: "Christy Laurendie", code: "S&H-2B17", mere: "Honore Lourdie", tel: "4385-2873" },
+  { nom: "MATHURIN", prenom: "Louinie Marah St J.", code: "S&H-2B18", mere: "Blaise Melanie", tel: "4068-6587" },
+  { nom: "MÉNARD", prenom: "Maelle Esther Lourdes", code: "S&H-2B19", mere: "Cherenfant Martine", tel: "3330-4004" },
+  { nom: "MUSCADIN", prenom: "Nathanaëlle", code: "S&H-2B20", mere: "Joseph Elianise", tel: "4313-4332" },
+  { nom: "RENÉ", prenom: "Sephora", code: "S&H-2B21", mere: "Elma Sandra", tel: "3384-0010" },
+  { nom: "RÉNÉLUS", prenom: "Emmashirah", code: "S&H-2B22", mere: "Joseph Dieunise", tel: "3361-0259" },
+  { nom: "SABIN", prenom: "Bendinho Chrismaëll", code: "S&H-2B23", mere: "Ismanoel Sabin", tel: "3365-7516" },
+  { nom: "SAINT PHAT", prenom: "Judney Valéry", code: "S&H-2B24", mere: "Joseph Alexendra", tel: "4233-7814" },
+  { nom: "SAINTEA", prenom: "Wedzer Junior", code: "S&H-2B25", mere: "Dorestyl Kettelie", tel: "4816-5943" }
 ];
 
 async function initTables() {
@@ -224,35 +282,29 @@ async function initTables() {
 
     const defaultHash = await bcrypt.hash("ecole2026", 12);
 
-    // 1. INSERTION CLASSE 1ère ANNÉE A
-    await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, ['1ère Année A', 'Fondamental']);
-    const resClassA = await pool.query("SELECT id FROM classes WHERE nom = '1ère Année A' LIMIT 1");
-    if (resClassA.rows.length > 0) {
-      const classIdA = resClassA.rows[0].id;
-      for (const e of eleves1eA) {
-        await pool.query(`
-          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id, nom_mere, tel_mere)
-          VALUES ($1, $2, $3, $4, 'ELEVE', $5, $6, $7)
-          ON CONFLICT (code_eleve) DO UPDATE 
-          SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id, nom_mere = EXCLUDED.nom_mere, tel_mere = EXCLUDED.tel_mere
-        `, [e.nom, e.prenom, e.code, defaultHash, classIdA, e.mere, e.tel]);
+    // FONCTION HELPER POUR INSERER UNE CLASSE
+    async function insertClass(nomClasse, elevesList) {
+      await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, [nomClasse, 'Fondamental']);
+      const resClass = await pool.query("SELECT id FROM classes WHERE nom = $1 LIMIT 1", [nomClasse]);
+      if (resClass.rows.length > 0) {
+        const classId = resClass.rows[0].id;
+        for (const e of elevesList) {
+          await pool.query(`
+            INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id, nom_mere, tel_mere)
+            VALUES ($1, $2, $3, $4, 'ELEVE', $5, $6, $7)
+            ON CONFLICT (code_eleve) DO UPDATE 
+            SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id, nom_mere = EXCLUDED.nom_mere, tel_mere = EXCLUDED.tel_mere
+          `, [e.nom, e.prenom, e.code, defaultHash, classId, e.mere, e.tel]);
+        }
       }
     }
 
-    // 2. INSERTION CLASSE 1ère ANNÉE B
-    await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, ['1ère Année B', 'Fondamental']);
-    const resClassB = await pool.query("SELECT id FROM classes WHERE nom = '1ère Année B' LIMIT 1");
-    if (resClassB.rows.length > 0) {
-      const classIdB = resClassB.rows[0].id;
-      for (const e of eleves1eB) {
-        await pool.query(`
-          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id, nom_mere, tel_mere)
-          VALUES ($1, $2, $3, $4, 'ELEVE', $5, $6, $7)
-          ON CONFLICT (code_eleve) DO UPDATE 
-          SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id, nom_mere = EXCLUDED.nom_mere, tel_mere = EXCLUDED.tel_mere
-        `, [e.nom, e.prenom, e.code, defaultHash, classIdB, e.mere, e.tel]);
-      }
-    }
+    // INSERTION DES CLASSES
+    await insertClass('1ère Année A', eleves1eA);
+    await insertClass('1ère Année B', eleves1eB);
+    await insertClass('2ème Année A', eleves2eA);
+    await insertClass('2ème Année B', eleves2eB);
+
   } catch(err) {
     console.log("Info DB init:", err.message);
   }
