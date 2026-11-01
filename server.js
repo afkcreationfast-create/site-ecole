@@ -84,64 +84,64 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// LISTES OFFICIELLES EXTRAITES DES FICHES DE PRÉSENCE (4E A et 4E B)
-const eleves4eA = [
-  { nom: "ALCÉ", prenom: "Woodsheldine", code: "S&H-4A01" },
-  { nom: "BRUNO", prenom: "Sara", code: "S&H-4A02" },
-  { nom: "BRUTUS", prenom: "Aliya", code: "S&H-4A03" },
-  { nom: "CHARLES", prenom: "Abigaelle", code: "S&H-4A04" },
-  { nom: "CHÉRI", prenom: "Marc Olivier Harvens", code: "S&H-4A05" },
-  { nom: "CLAIRVIL", prenom: "Amsterly", code: "S&H-4A06" },
-  { nom: "DANTIL", prenom: "Ghisnaïca", code: "S&H-4A07" },
-  { nom: "DÉSARME", prenom: "Guivensley", code: "S&H-4A08" },
-  { nom: "DZEGBA", prenom: "Yawo Thimothée", code: "S&H-4A09" },
-  { nom: "EDMOND", prenom: "Wed Hendell Sondy", code: "S&H-4A10" },
-  { nom: "ETIENNE", prenom: "Adley", code: "S&H-4A11" },
-  { nom: "FÉNÉLON", prenom: "Daliya Ruth Shamma", code: "S&H-4A12" },
-  { nom: "GENTILHOMME", prenom: "Anderson", code: "S&H-4A13" },
-  { nom: "GÉRARD", prenom: "Joyci Lei Milouska", code: "S&H-4A14" },
-  { nom: "GUILLAUME", prenom: "Jeffrey Theven J.", code: "S&H-4A15" },
-  { nom: "HYACINTHE", prenom: "Livinaëlle", code: "S&H-4A16" },
-  { nom: "THELEON", prenom: "Anna Joaquina Barbara T.", code: "S&H-4A17" },
-  { nom: "LUCIEN", prenom: "Lyneïsha", code: "S&H-4A18" },
-  { nom: "MICHEL", prenom: "Félix Aiden", code: "S&H-4A19" },
-  { nom: "MUSCADIN", prenom: "Johnsley", code: "S&H-4A20" },
-  { nom: "PHILIPPE", prenom: "Bernsley Puccini", code: "S&H-4A21" },
-  { nom: "PIERRE", prenom: "Déborah", code: "S&H-4A22" },
-  { nom: "PIERRE", prenom: "Shamanaëlle", code: "S&H-4A23" },
-  { nom: "SAINT FLEUR", prenom: "Evah Smily", code: "S&H-4A24" },
-  { nom: "SYLVAIN", prenom: "Carl Hensley", code: "S&H-4A25" }
+// LISTES OFFICIELLES EXTRAITES DES FICHES DE PRÉSENCE (5E A et 5E B)
+const eleves5eA = [
+  { nom: "CHERENFANT", prenom: "Karl Eindji", code: "S&H-5A01" },
+  { nom: "CHER-ENFANT", prenom: "Clarens Y. J.", code: "S&H-5A02" },
+  { nom: "CINÉAS", prenom: "Medjine", code: "S&H-5A03" },
+  { nom: "CRÉJUSTE", prenom: "Rood-Neylie", code: "S&H-5A04" },
+  { nom: "DALUSMA", prenom: "Jemps Junior", code: "S&H-5A05" },
+  { nom: "DIEUDONNÉ", prenom: "Erlanda Maeva", code: "S&H-5A06" },
+  { nom: "EUGÈNE", prenom: "Prince Weddersky", code: "S&H-5A07" },
+  { nom: "FÉLIX", prenom: "Mike Wolden", code: "S&H-5A08" },
+  { nom: "FRANCOIS", prenom: "Josué", code: "S&H-5A09" },
+  { nom: "FRANÇOIS", prenom: "Lealeel Israel", code: "S&H-5A10" },
+  { nom: "GABRIEL", prenom: "Jesly", code: "S&H-5A11" },
+  { nom: "JOSEPH", prenom: "Ankara C.S.", code: "S&H-5A12" },
+  { nom: "JOSEPH", prenom: "Loutchie Max A.", code: "S&H-5A13" },
+  { nom: "LECONTE", prenom: "Jordany", code: "S&H-5A14" },
+  { nom: "LOUIS", prenom: "Fadeleïka", code: "S&H-5A15" },
+  { nom: "PARVILUS", prenom: "Rockviadallah P. H.", code: "S&H-5A16" },
+  { nom: "PIERRE", prenom: "Blondine Florica", code: "S&H-5A17" },
+  { nom: "PIERRE", prenom: "Joshua Christopher", code: "S&H-5A18" },
+  { nom: "PLUVIOSE", prenom: "Prince Mike Jessy", code: "S&H-5A19" },
+  { nom: "PRÉVIL", prenom: "Carvensley O.", code: "S&H-5A20" },
+  { nom: "PROPHÈTE", prenom: "Rody Feb Marley", code: "S&H-5A21" },
+  { nom: "SAINT FLEUR", prenom: "Darlensky", code: "S&H-5A22" },
+  { nom: "SAINT-VIL", prenom: "Rood Rihanna", code: "S&H-5A23" },
+  { nom: "SIMON", prenom: "Samora Lydie A.", code: "S&H-5A24" },
+  { nom: "THÉLÉMARQUE", prenom: "Christ M.", code: "S&H-5A25" }
 ];
 
-const eleves4eB = [
-  { nom: "ALEXANDRE", prenom: "Djanellie", code: "S&H-4B01" },
-  { nom: "ANGRAND", prenom: "Ben Adler Kensley", code: "S&H-4B02" },
-  { nom: "ARMAND", prenom: "Behi Devlyne", code: "S&H-4B03" },
-  { nom: "AUGUSTIN", prenom: "Kervens Heberly", code: "S&H-4B04" },
-  { nom: "BRAVE", prenom: "Redenica Nettie", code: "S&H-4B05" },
-  { nom: "BRENORD", prenom: "Christopher Adams", code: "S&H-4B06" },
-  { nom: "CADET", prenom: "Abed Solontz", code: "S&H-4B07" },
-  { nom: "CHÉRY", prenom: "Maleynie", code: "S&H-4B08" },
-  { nom: "FÉNÉLON", prenom: "Dackerly Angel M.", code: "S&H-4B09" },
-  { nom: "INNOCENT", prenom: "Marly", code: "S&H-4B10" },
-  { nom: "JEAN BAPTISTE", prenom: "Samirah Zeruiah", code: "S&H-4B11" },
-  { nom: "JEAN", prenom: "Camessee", code: "S&H-4B12" },
-  { nom: "JOSEPH", prenom: "Samuel", code: "S&H-4B13" },
-  { nom: "LAFORCE", prenom: "Naïla", code: "S&H-4B14" },
-  { nom: "LAMBERT", prenom: "Rose Nedjine", code: "S&H-4B15" },
-  { nom: "LAMOUR", prenom: "Ange Stephano", code: "S&H-4B16" },
-  { nom: "MICHEL", prenom: "Sablantha Roselandie", code: "S&H-4B17" },
-  { nom: "PETIT-FRÈRE", prenom: "Ysvenka", code: "S&H-4B18" },
-  { nom: "PIERRE", prenom: "Idelyn", code: "S&H-4B19" },
-  { nom: "PIERRE", prenom: "Ralph Peter", code: "S&H-4B20" },
-  { nom: "PIERRE", prenom: "Rodkerson", code: "S&H-4B21" },
-  { nom: "RENÉ", prenom: "Laura", code: "S&H-4B22" },
-  { nom: "SAINT PHAT", prenom: "Christelle Esther", code: "S&H-4B23" },
-  { nom: "JOSEPH DORSAINVIL", prenom: "Saskyana Kyama M.", code: "S&H-4B24" },
-  { nom: "TANIS", prenom: "Rose Cartie", code: "S&H-4B25" }
+const eleves5eB = [
+  { nom: "ALEXIS", prenom: "Christelle Stessie D.", code: "S&H-5B01" },
+  { nom: "ANTOINE", prenom: "Sheslie Ricardine", code: "S&H-5B02" },
+  { nom: "BAPTISTE", prenom: "Taissa", code: "S&H-5B03" },
+  { nom: "CHARLES", prenom: "Schteirdju", code: "S&H-5B04" },
+  { nom: "DORVIL", prenom: "Sheenaydine", code: "S&H-5B05" },
+  { nom: "ETIENNE", prenom: "Christie Danick", code: "S&H-5B06" },
+  { nom: "EVARISTE", prenom: "Fredony Junior N.", code: "S&H-5B07" },
+  { nom: "FÉNÉLUS", prenom: "Abichague", code: "S&H-5B08" },
+  { nom: "JEAN BAPTISTE", prenom: "Loudjedarlie", code: "S&H-5B09" },
+  { nom: "LECONTE", prenom: "Clodany", code: "S&H-5B10" },
+  { nom: "LOUIS", prenom: "Flaydy", code: "S&H-5B11" },
+  { nom: "LOUIS", prenom: "Ruth Nathanaelle", code: "S&H-5B12" },
+  { nom: "LUMA", prenom: "Julanda", code: "S&H-5B13" },
+  { nom: "MANASSÉ", prenom: "Ednicka Laura", code: "S&H-5B14" },
+  { nom: "MARCELLUS", prenom: "Genielson", code: "S&H-5B15" },
+  { nom: "MARS", prenom: "Maritza Chloé", code: "S&H-5B16" },
+  { nom: "MOMPREMIER", prenom: "Faïsha Mara", code: "S&H-5B17" },
+  { nom: "MONCHER", prenom: "Jimaelka", code: "S&H-5B18" },
+  { nom: "PIERRE", prenom: "Guervensley R.", code: "S&H-5B19" },
+  { nom: "PIERRE", prenom: "Jefferson", code: "S&H-5B20" },
+  { nom: "PIERRE", prenom: "Kedly Hantzley N.", code: "S&H-5B21" },
+  { nom: "SAINT PHAT", prenom: "Kedj Rhoby", code: "S&H-5B22" },
+  { nom: "THÉODOR", prenom: "Woutchelle", code: "S&H-5B23" },
+  { nom: "THIEOGÈNE", prenom: "Ketura", code: "S&H-5B24" },
+  { nom: "VIXAMAR", prenom: "Varlie Esther", code: "S&H-5B25" }
 ];
 
-// MIGRATIONS AUTOMATIQUES & INITIALISATION DES CLASSES 4E A ET 4E B
+// MIGRATIONS AUTOMATIQUES & INITIALISATION DES CLASSES 5E A ET 5E B
 async function initTables() {
   try {
     await pool.query(`
@@ -233,45 +233,45 @@ async function initTables() {
       );
     `);
 
-    // S'assurer que les classes 4ème Année A et 4ème Année B existent
+    // S'assurer que les classes 5ème Année A et 5ème Année B existent
     await pool.query(`
       INSERT INTO classes (nom, niveau) 
-      VALUES ('4ème Année A', 'Fondamental'), ('4ème Année B', 'Fondamental')
+      VALUES ('5ème Année A', 'Fondamental'), ('5ème Année B', 'Fondamental')
       ON CONFLICT (nom) DO NOTHING
     `);
 
     const defaultHash = await bcrypt.hash("ecole2026", 12);
 
-    // Insertion & Synchronisation des élèves de 4ème Année A (25 élèves)[cite: 5]
-    const resClass4A = await pool.query("SELECT id FROM classes WHERE nom = '4ème Année A' LIMIT 1");
-    if (resClass4A.rows.length > 0) {
-      const id4A = resClass4A.rows[0].id;
-      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id4A]);
+    // Insertion & Synchronisation des élèves de 5ème Année A (25 élèves)[cite: 7]
+    const resClass5A = await pool.query("SELECT id FROM classes WHERE nom = '5ème Année A' LIMIT 1");
+    if (resClass5A.rows.length > 0) {
+      const id5A = resClass5A.rows[0].id;
+      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id5A]);
 
-      for (const e of eleves4eA) {
+      for (const e of eleves5eA) {
         await pool.query(`
           INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
           VALUES ($1, $2, $3, $4, 'ELEVE', $5)
           ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
-        `, [e.nom, e.prenom, e.code, defaultHash, id4A]);
+        `, [e.nom, e.prenom, e.code, defaultHash, id5A]);
       }
-      console.log("✅ Élèves de la classe 4ème Année A initialisés (25 élèves)[cite: 5].");
+      console.log("✅ Élèves de la classe 5ème Année A initialisés (25 élèves).");
     }
 
-    // Insertion & Synchronisation des élèves de 4ème Année B (25 élèves)[cite: 6]
-    const resClass4B = await pool.query("SELECT id FROM classes WHERE nom = '4ème Année B' LIMIT 1");
-    if (resClass4B.rows.length > 0) {
-      const id4B = resClass4B.rows[0].id;
-      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id4B]);
+    // Insertion & Synchronisation des élèves de 5ème Année B (25 élèves)[cite: 8]
+    const resClass5B = await pool.query("SELECT id FROM classes WHERE nom = '5ème Année B' LIMIT 1");
+    if (resClass5B.rows.length > 0) {
+      const id5B = resClass5B.rows[0].id;
+      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id5B]);
 
-      for (const e of eleves4eB) {
+      for (const e of eleves5eB) {
         await pool.query(`
           INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
           VALUES ($1, $2, $3, $4, 'ELEVE', $5)
           ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
-        `, [e.nom, e.prenom, e.code, defaultHash, id4B]);
+        `, [e.nom, e.prenom, e.code, defaultHash, id5B]);
       }
-      console.log("✅ Élèves de la classe 4ème Année B initialisés (25 élèves)[cite: 6].");
+      console.log("✅ Élèves de la classe 5ème Année B initialisés (25 élèves).");
     }
 
   } catch(err) {
