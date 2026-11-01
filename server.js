@@ -80,72 +80,64 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// LISTES OFFICIELLES AVEC PARENTS (Kinder A et Kinder B)[cite: 11, 12]
-const elevesKinderA = [
-  { nom: "ALEXANDRA", prenom: "Ada Ismine Leica", code: "S&H-KINA01", mere: "Merisier Lourdes", tel: "4847-0467 / 4207-7363" },
-  { nom: "ANDRÉ", prenom: "Princesse Darline Z.S.", code: "S&H-KINA02", mere: "Senognard Smiralda", tel: "4024-4304 / 4392-9617" },
-  { nom: "ANTOINE", prenom: "Tanaëlle", code: "S&H-KINA03", mere: "Jn Louis Enouse", tel: "3522-2837 / 4382-1564" },
-  { nom: "BELAMOUR", prenom: "Tchwes-Phaica", code: "S&H-KINA04", mere: "Joseph Maudeline", tel: "4002-6767 / 3325-4408" },
-  { nom: "BESSARD", prenom: "Guilda", code: "S&H-KINA05", mere: "Etienne Withnie D.", tel: "3344-5539 / 4324-5655" },
-  { nom: "CADUL", prenom: "Fritz Smarcky", code: "S&H-KINA06", mere: "Pierre Shedeline", tel: "5596-9471" },
-  { nom: "CHARLES", prenom: "Djesmarlie Flore", code: "S&H-KINA07", mere: "Charles Eldina", tel: "4415-2959" },
-  { nom: "DIEUDONNÉ", prenom: "Landy Maelle", code: "S&H-KINA08", mere: "Delisca Myda D.", tel: "3741-2013 / 3914-1929" },
-  { nom: "DIEUDONNÉ", prenom: "Shamaël", code: "S&H-KINA09", mere: "Dieudomé Majorie", tel: "3849-4087" },
-  { nom: "DUMÉ", prenom: "Noah Christyne", code: "S&H-KINA10", mere: "Bernadette Etienne", tel: "3366-9045 / 4488-8518" },
-  { nom: "ETIENNE", prenom: "Benalda", code: "S&H-KINA11", mere: "Joseph Ange-Derline", tel: "4814-3696 / 4221-5966" },
-  { nom: "FENELUS", prenom: "Jay-Kerry", code: "S&H-KINA12", mere: "Joseph Rosettie", tel: "5566-7994 / 4654-8847" },
-  { nom: "FERDINAND", prenom: "Anie Alexandra", code: "S&H-KINA13", mere: "Casséus Midège", tel: "3750-2785 / 3254-5169" },
-  { nom: "FRANCOIS", prenom: "Neisha Eunice", code: "S&H-KINA14", mere: "Variste Kellene", tel: "4321-2818 / 3624-7961" },
-  { nom: "GRÉGOIRE", prenom: "Mathis Marckenley", code: "S&H-KINA15", mere: "Magloire Marie-France", tel: "4107-8748 / 4795-5477" },
-  { nom: "JEANEUS", prenom: "Dahens", code: "S&H-KINA16", mere: "Saint-Victor Christiane", tel: "4210-8390 / 5602-3167" },
-  { nom: "JEAN MONTIMER", prenom: "Valentz C.", code: "S&H-KINA17", mere: "Gilberte Jn Montimer", tel: "3282-0128 / 4170-1398" },
-  { nom: "JOESPH", prenom: "Malaika Djounaïlove", code: "S&H-KINA18", mere: "Eugene Lovelie", tel: "4001-9415 / 4041-9415" },
-  { nom: "JOSEPH", prenom: "Ede-Yhaelle Niah", code: "S&H-KINA19", mere: "Chenante Charles J.", tel: "4105-8252 / 4620-2626" },
-  { nom: "JOSEPH", prenom: "Liz Moirah Noelanie", code: "S&H-KINA20", mere: "Louis Brulande M.", tel: "4136-5001" },
-  { nom: "JOSEPH", prenom: "Sarah Keftara", code: "S&H-KINA21", mere: "Telemaque Ketnise", tel: "4225-8999 / 4388-6439" },
-  { nom: "LUMA", prenom: "Julandie", code: "S&H-KINA22", mere: "Elda Pierre", tel: "3327-0646 / 3592-8601" },
-  { nom: "PIERRE", prenom: "Kareen-Briana", code: "S&H-KINA23", mere: "Caslyne Lormenar", tel: "3386-5563 / 4368-8745" },
-  { nom: "ROSANAT", prenom: "Sam-Lourdentz", code: "S&H-KINA24", mere: "Angrand Lourdes-Juna", tel: "3226-6935 / 3945-4535" },
-  { nom: "SAINT-FLEUR", prenom: "Liam N.", code: "S&H-KINA25", mere: "Timothée Samora", tel: "3240-2162 / 4137-4766" }
+// LISTES OFFICIELLES 1e A ET 1e B AVEC MÈRES ET TÉLÉPHONES DE RÉFÉRENCE
+const eleves1eA = [
+  { nom: "ALTINOR", prenom: "Mike Kryster", code: "S&H-1A01", mere: "Dieudonne J.Altinor", tel: "3336-9498" },
+  { nom: "ANDRÉ", prenom: "Dorah Danaelle", code: "S&H-1A02", mere: "Rézida Pierre", tel: "3395-7601" },
+  { nom: "ANTOINE", prenom: "John Erwentz", code: "S&H-1A03", mere: "Antoine Justafort", tel: "4282-5577" },
+  { nom: "AUGUSTE", prenom: "Djoude Maylie", code: "S&H-1A04", mere: "Saint-Fort Djocelyne", tel: "3266-3695" },
+  { nom: "BOLIVARD", prenom: "Joseph Mitcheïska", code: "S&H-1A05", mere: "Joseph Dachecanaëlle", tel: "5523-7904" },
+  { nom: "CADUL", prenom: "Richenel", code: "S&H-1A06", mere: "Mme Cadul", tel: "3525-9964" },
+  { nom: "CARREFOUR", prenom: "Arthur Materrazi", code: "S&H-1A07", mere: "Denis Anaїca", tel: "3323-0390" },
+  { nom: "CASSÉUS", prenom: "Joé Philippe Marino", code: "S&H-1A08", mere: "Joane Saint-Prévil", tel: "3873-2723 / 5532-7115" },
+  { nom: "CENAT", prenom: "Eud Storly Sofony", code: "S&H-1A09", mere: "Shedeline Joseph Cenat", tel: "4242-7196" },
+  { nom: "CONTY", prenom: "Alph Gee Owen", code: "S&H-1A10", mere: "Toussaint Roudeline", tel: "3331-2868" },
+  { nom: "DIARRA", prenom: "Kadidia Angel", code: "S&H-1A11", mere: "Celine Elodie I Jacmain", tel: "4162-70131" },
+  { nom: "DUMORNÉ", prenom: "Asnaëlle", code: "S&H-1A12", mere: "Dumorné Rolinx", tel: "3266-6470" },
+  { nom: "ELVA", prenom: "Trosky Fabius", code: "S&H-1A13", mere: "Joseph Sonia", tel: "5526-7617" },
+  { nom: "ENGRAND", prenom: "Vanelson", code: "S&H-1A14", mere: "Engrand Vanel", tel: "4166-7447" },
+  { nom: "FRANCOIS", prenom: "Geslande Lydie", code: "S&H-1A15", mere: "Paulimont Vilaine", tel: "4340-5300" },
+  { nom: "JOSEPH", prenom: "Bella-Rose", code: "S&H-1A16", mere: "Emila Moise", tel: "3310-9776" },
+  { nom: "JOSEPH", prenom: "Olivier Nicardy", code: "S&H-1A17", mere: "Angrand Iseline", tel: "4245-4115" },
+  { nom: "LECONTE", prenom: "Corine Joana", code: "S&H-1A18", mere: "Louiseize Joane", tel: "4393-9970" },
+  { nom: "LOUIS", prenom: "Peter Kawensly", code: "S&H-1A19", mere: "Pierre Lynde", tel: "3506-1098" },
+  { nom: "LUCART", prenom: "Samuel", code: "S&H-1A20", mere: "Dorely Dianouse", tel: "3332-2998" },
+  { nom: "NOEL", prenom: "Ruth Jemima Luvie", code: "S&H-1A21", mere: "Luc Livie", tel: "3291-4561" },
+  { nom: "PETIT", prenom: "Meryem H. N.", code: "S&H-1A22", mere: "Petit Arielle .S", tel: "3268-1107" },
+  { nom: "PIERRE", prenom: "Lia Gamaylie", code: "S&H-1A23", mere: "Pierre Gameson", tel: "4476-1160" },
+  { nom: "JEAN PIERRE", prenom: "Sarai", code: "S&H-1A24", mere: "Kerlyne Seize", tel: "4216-0422" },
+  { nom: "PIERRE", prenom: "Marli Jordy", code: "S&H-1A25", mere: "Augustin Marceline", tel: "4778-0136" },
+  { nom: "SAINT-FLEUR", prenom: "Ethmaëlle", code: "S&H-1A26", mere: "Célestin Marianite", tel: "3331-5476" }
 ];
 
-const elevesKinderB = [
-  { nom: "ADOLPH", prenom: "Victoria Noah", code: "S&H-KINB01", mere: "Gedeon Rose-Carline", tel: "5568-7245" },
-  { nom: "AURELUS", prenom: "Alinadelle", code: "S&H-KINB02", mere: "Madelle Casimir", tel: "4014-0212" },
-  { nom: "BIEN-AIME", prenom: "Ruth Love", code: "S&H-KINB03", mere: "Bernadin Naromie", tel: "4011-9122 / 3740-4400" },
-  { nom: "CESAR", prenom: "Angel Hayden C.", code: "S&H-KINB04", mere: "Saintilmond Angie", tel: "3252-9791" },
-  { nom: "DANIEL", prenom: "Rodlin", code: "S&H-KINB05", mere: "Mme Natacha Desir", tel: "3356-1802" },
-  { nom: "DORILUS", prenom: "Djihane Fathia", code: "S&H-KINB06", mere: "Moreste Simone", tel: "5593-9786" },
-  { nom: "ESTIL", prenom: "Hantz Wally Junior", code: "S&H-KINB07", mere: "Mme Estil Waldeque", tel: "4333-6653" },
-  { nom: "ETIENNE", prenom: "Johnsley", code: "S&H-KINB08", mere: "Marceille Jocelyne", tel: "3288-8956" },
-  { nom: "FENELUS", prenom: "Steycha", code: "S&H-KINB09", mere: "Kettie Fenelus", tel: "4279-5072" },
-  { nom: "FONTIS", prenom: "Leila Klaroudia", code: "S&H-KINB10", mere: "Joseph Juliette", tel: "4134-6098" },
-  { nom: "FUCIEN", prenom: "Manuella", code: "S&H-KINB11", mere: "Methellus Carmelle", tel: "3162-4667" },
-  { nom: "GIOVANNY", prenom: "Victor", code: "S&H-KINB12", mere: "Michel Guilnie", tel: "4861-1824" },
-  { nom: "GRÉGOIRE", prenom: "Peter Jay Carvinsky", code: "S&H-KINB13", mere: "Etienne Rose-Carty Rolande", tel: "4292-6644" },
-  { nom: "GUERRIER", prenom: "Rayan Ejlon", code: "S&H-KINB14", mere: "Prophète Majorie", tel: "3872-9803" },
-  { nom: "JEAN", prenom: "Darlie Camala A.", code: "S&H-KINB15", mere: "Joseph Lovelie", tel: "4267-8551" },
-  { nom: "JEROME", prenom: "Alex Junior", code: "S&H-KINB16", mere: "Marie Sherly Pamphile", tel: "4165-1416" },
-  { nom: "JOSEPH", prenom: "Isgaelle Esther", code: "S&H-KINB17", mere: "Angrand Iseline", tel: "4245-4115" },
-  { nom: "LEXIS", prenom: "Alexandra", code: "S&H-KINB18", mere: "Monsette Camelita", tel: "4452-1684" },
-  { nom: "VOLCY", prenom: "Lucas Andy", code: "S&H-KINB19", mere: "Mme Chenante Charles J.", tel: "4105-8252" },
-  { nom: "MESADIEU", prenom: "Patricia Sarah Djouceline", code: "S&H-KINB20", mere: "Augustin Guerline", tel: "4333-7706" },
-  { nom: "MILIEN", prenom: "Ludentz Dlensky", code: "S&H-KINB21", mere: "Charles Lumene", tel: "3258-6282" },
-  { nom: "PIERRE", prenom: "Samuel", code: "S&H-KINB22", mere: "Joanne Francois", tel: "3585-4855 / 4022-3485" },
-  { nom: "FRANCOIS", prenom: "Olivier C. Sainvilus", code: "S&H-KINB23", mere: "Jean Baptiste Sendy", tel: "4856-8916" },
-  { nom: "PAMERA", prenom: "Sarah Brenalie", code: "S&H-KINB24", mere: "Altemar Catia", tel: "4336-0925" },
-  { nom: "SIMEUS", prenom: "Youdencie Nasheka", code: "S&H-KINB25", mere: "Alexis Anne-Rose", tel: "5649-3783" }
+const eleves1eB = [
+  { nom: "AUGUSTIN", prenom: "Jemima", code: "S&H-1B01", mere: "Germanie Grégoire", tel: "5517-2743" },
+  { nom: "BRENORD", prenom: "Weed Lorensky W.", code: "S&H-1B02", mere: "Onard Wilnise", tel: "3262-0343" },
+  { nom: "CHARLES", prenom: "Evenhaissa Bestinie", code: "S&H-1B03", mere: "Vanessa Francisque", tel: "4487-3838" },
+  { nom: "CHERTOUTE", prenom: "Evalynn Brune", code: "S&H-1B04", mere: "Brutus Brunette", tel: "3721-2340" },
+  { nom: "CREJUSTE", prenom: "Ney-Saelie", code: "S&H-1B05", mere: "Clorcin Dieunette", tel: "3467-4364" },
+  { nom: "DALUSMA", prenom: "Djena Erika S.", code: "S&H-1B06", mere: "Mme Sonel Dalusma", tel: "5538-5440" },
+  { nom: "DORVIL", prenom: "Shamaï", code: "S&H-1B07", mere: "Servil Merline", tel: "4257-4054" },
+  { nom: "DUVISIEN", prenom: "Rose-Shaëlla", code: "S&H-1B08", mere: "Ynive Saint Jean", tel: "4311-9556" },
+  { nom: "ISRAËLLE", prenom: "Lune Gaël", code: "S&H-1B09", mere: "Aristilde Leronne", tel: "4305-3856" },
+  { nom: "JEAN BAPTISTE", prenom: "Amadéo A.", code: "S&H-1B10", mere: "Lemarin Jean Baptiste", tel: "3844-9597" },
+  { nom: "JOISIL", prenom: "Rose Daëlle", code: "S&H-1B11", mere: "Marcelus M. Madeleine", tel: "4001-1981 / 4094-0408" },
+  { nom: "JOSEPH", prenom: "Dave", code: "S&H-1B12", mere: "Telemaque Kethnise", tel: "4388-6439" },
+  { nom: "JOSEPH", prenom: "Mariana Nora-Lys", code: "S&H-1B13", mere: "Louis Jean Fabienne", tel: "3911-2644" },
+  { nom: "JOSEPH", prenom: "Nathan Lucas", code: "S&H-1B14", mere: "Paulna Louissant", tel: "4740-1711" },
+  { nom: "JOSEPH", prenom: "Sarah-Djine", code: "S&H-1B15", mere: "Desir Djina", tel: "4240-6607" },
+  { nom: "LOSANDIEU", prenom: "Laura Ashley", code: "S&H-1B16", mere: "Saint-Fleur Maillande", tel: "3460-8513" },
+  { nom: "MATHURIN", prenom: "Achnaïca C.", code: "S&H-1B17", mere: "Mathurin Wilnise", tel: "3323-0772" },
+  { nom: "MILFLEUR", prenom: "Terson", code: "S&H-1B18", mere: "Norlius Franda", tel: "4702-6840" },
+  { nom: "NORD", prenom: "Marvents Fils", code: "S&H-1B19", mere: "Nord Mardochée", tel: "3226-6369" },
+  { nom: "PARVILUS", prenom: "Philippe R.H.", code: "S&H-1B20", mere: "Rose-Mylène Alcéna", tel: "3394-8314 / 4363-0665" },
+  { nom: "PIERRE", prenom: "Luckensia", code: "S&H-1B21", mere: "Fleurentin Irène", tel: "5549-4731" },
+  { nom: "SAINTELUS", prenom: "Ginaylie", code: "S&H-1B22", mere: "Noël Rosline Saintelus", tel: "4201-9986" },
+  { nom: "SAINT-LOUIS", prenom: "Brianna H.", code: "S&H-1B23", mere: "St Louis Brusly", tel: "3810-5026" },
+  { nom: "SINSMYR", prenom: "Malaïca", code: "S&H-1B24", mere: "George Rose Merlande", tel: "3944-3314" },
+  { nom: "TREVOL", prenom: "Fredly Carl-Tensky", code: "S&H-1B25", mere: "Sypain Velouse", tel: "3648-1723 / 4720-6424" },
+  { nom: "VIXAMAR", prenom: "Guerlangélita", code: "S&H-1B26", mere: "Mathieu Guerlande", tel: "3502-8166" }
 ];
-
-// Initialisation des autres classes (4e, 5e, 6e) sans parent spécifique pour l'instant
-const genererElevesParDefaut = (prefix, count) => {
-  let list = [];
-  for (let i = 1; i <= count; i++) {
-    let numStr = String(i).padStart(2, '0');
-    list.push({ nom: `ÉLÈVE ${i}`, prenom: `${prefix}`, code: `S&H-${prefix}-${numStr}`, mere: "Non renseigné", tel: "—" });
-  }
-  return list;
-};
 
 async function initTables() {
   try {
@@ -209,14 +201,8 @@ async function initTables() {
     `);
 
     const classesList = [
-      { nom: 'Kinder A', niveau: 'Préscolaire', list: elevesKinderA },
-      { nom: 'Kinder B', niveau: 'Préscolaire', list: elevesKinderB },
-      { nom: '4ème Année A', niveau: 'Fondamental', list: genererElevesParDefaut('4A', 25) },
-      { nom: '4ème Année B', niveau: 'Fondamental', list: genererElevesParDefaut('4B', 25) },
-      { nom: '5ème Année A', niveau: 'Fondamental', list: genererElevesParDefaut('5A', 25) },
-      { nom: '5ème Année B', niveau: 'Fondamental', list: genererElevesParDefaut('5B', 25) },
-      { nom: '6ème Année A', niveau: 'Fondamental', list: genererElevesParDefaut('6A', 25) },
-      { nom: '6ème Année B', niveau: 'Fondamental', list: genererElevesParDefaut('6B', 25) }
+      { nom: '1ère Année A', niveau: 'Fondamental', list: eleves1eA },
+      { nom: '1ère Année B', niveau: 'Fondamental', list: eleves1eB }
     ];
 
     const defaultHash = await bcrypt.hash("ecole2026", 12);
@@ -804,7 +790,7 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur classes."); }
 });
 
-// GESTION DES ÉLÈVES AVEC AFFICHAGE DES PARENTS (MÈRE & TÉLÉPHONE)
+// GESTION DES ÉLÈVES AVEC AFFICHAGE DES PARENTS (1e A & 1e B)
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
     const classesRes = await pool.query("SELECT id, nom FROM classes ORDER BY nom ASC");
@@ -839,7 +825,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px">
           <div>
             <h2>🎓 Liste des Élèves &amp; Contacts Parents</h2>
-            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères.</p>
+            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères (Classes 1ère Année A &amp; B).</p>
           </div>
           <form method="get" action="/admin/eleves" style="min-width:240px">
             <select name="classe_id" onchange="this.form.submit()">${selectorOptions}</select>
