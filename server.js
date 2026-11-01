@@ -142,7 +142,37 @@ const planScolaire2026 = {
   ]
 };
 
-// MIGRATIONS AUTOMATIQUES BDD
+// LISTE OFFICIELLE DES ÉLÈVES DE 1ÈRE ANNÉE A (FICHE DE PRÉSENCE)
+const eleves1eA = [
+  { nom: "ALTINOR", prenom: "Mike Kryster", code: "S&H-1001" },
+  { nom: "ANDRÉ", prenom: "Dorah Danaelle", code: "S&H-1002" },
+  { nom: "ANTOINE", prenom: "John Erwentz", code: "S&H-1003" },
+  { nom: "AUGUSTE", prenom: "Djoude Maylie", code: "S&H-1004" },
+  { nom: "BOLIVARD", prenom: "Joseph Mitcheïska", code: "S&H-1005" },
+  { nom: "CADUL", prenom: "Richenel", code: "S&H-1006" },
+  { nom: "CARREFOUR", prenom: "Arthur Materrazi", code: "S&H-1007" },
+  { nom: "CASSÉUS", prenom: "Joé Philippe Marino", code: "S&H-1008" },
+  { nom: "CENAT", prenom: "Eud Storly Sofony", code: "S&H-1009" },
+  { nom: "CONTY", prenom: "Alph Gee Owen", code: "S&H-1010" },
+  { nom: "DIARRA", prenom: "Kadidia Angel", code: "S&H-1011" },
+  { nom: "DUMORNÉ", prenom: "Asnaëlle", code: "S&H-1012" },
+  { nom: "ELVA", prenom: "Trosky Fabius", code: "S&H-1013" },
+  { nom: "ENGRAND", prenom: "Vanelson", code: "S&H-1014" },
+  { nom: "FRANCOIS", prenom: "Geslande Lydie", code: "S&H-1015" },
+  { nom: "JOSEPH", prenom: "Bella-Rose", code: "S&H-1016" },
+  { nom: "JOSEPH", prenom: "Olivier Nicardy", code: "S&H-1017" },
+  { nom: "LECONTE", prenom: "Corine Joana", code: "S&H-1018" },
+  { nom: "LOUIS", prenom: "Peter Kawensly", code: "S&H-1019" },
+  { nom: "LUCART", prenom: "Samuel", code: "S&H-1020" },
+  { nom: "NOEL", prenom: "Ruth Jemima Luvie", code: "S&H-1021" },
+  { nom: "PETIT", prenom: "Meryem H. N.", code: "S&H-1022" },
+  { nom: "PIERRE", prenom: "Lia Gamaylie", code: "S&H-1023" },
+  { nom: "JEAN PIERRE", prenom: "Sarai", code: "S&H-1024" },
+  { nom: "PIERRE", prenom: "Marli Jordy", code: "S&H-1025" },
+  { nom: "SAINT-FLEUR", prenom: "Ethmaëlle", code: "S&H-1026" }
+];
+
+// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DES ÉLÈVES DE 1E A
 async function initTables() {
   try {
     await pool.query(`
@@ -151,7 +181,7 @@ async function initTables() {
 
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
-        nom VARCHAR(100) NOT NULL,
+        nom VARCHAR(100) NOT NULL UNIQUE,
         niveau VARCHAR(50) DEFAULT 'Fondamental'
       );
       
@@ -209,10 +239,6 @@ async function initTables() {
         image_url TEXT
       );
 
-      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS image_url TEXT;
-      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS date_pub DATE DEFAULT CURRENT_DATE;
-      ALTER TABLE devoirs ADD COLUMN IF NOT EXISTS professeur VARCHAR(100) DEFAULT 'Enseignant';
-
       DO $$ 
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'presences_eleve_id_date_presence_key') THEN
@@ -232,15 +258,29 @@ async function initTables() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         lu_at TIMESTAMPTZ
       );
-      CREATE INDEX IF NOT EXISTS idx_messages_receiver_created
-        ON messages(receiver_id, created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_messages_sender_created
-        ON messages(sender_id, created_at DESC);
     `);
 
-    const checkClasses = await pool.query("SELECT COUNT(*) FROM classes");
-    if (parseInt(checkClasses.rows[0].count) === 0) {
-      await pool.query("INSERT INTO classes (nom, niveau) VALUES ('1ère Année A', 'Fondamental'), ('1ère Année B', 'Fondamental'), ('2ème Année A', 'Fondamental'), ('Kindergarten', 'Maternelle')");
+    // S'assurer que les classes existent
+    await pool.query(`
+      INSERT INTO classes (nom, niveau) 
+      VALUES ('1ère Année A', 'Fondamental'), ('1ère Année B', 'Fondamental'), ('2ème Année A', 'Fondamental'), ('Kindergarten', 'Maternelle')
+      ON CONFLICT (nom) DO NOTHING
+    `);
+
+    // Insérer automatiquement les élèves de 1ère Année A
+    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '1ère Année A' LIMIT 1");
+    if (resClass.rows.length > 0) {
+      const classe1eAId = resClass.rows[0].id;
+      const defaultHash = await bcrypt.hash("ecole2026", 12);
+
+      for (const e of eleves1eA) {
+        await pool.query(`
+          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
+          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
+          ON CONFLICT DO NOTHING
+        `, [e.nom, e.prenom, e.code, defaultHash, classe1eAId]);
+      }
+      console.log("✅ Élèves de la classe 1ère Année A initialisés avec succès.");
     }
   } catch(err) {
     console.log("Info DB init:", err.message);
@@ -291,10 +331,6 @@ const layout = (title, content, req) => {
 <meta name="theme-color" content="#0b1630">
 <title>${h(title)} — LEKOL S&amp;H</title>
 <style>
-/* ==================================================
-   LEKOL S&H — SIGNATURE DESIGN 2026 + MOBILE PREMIUM
-================================================== */
-
 :root {
   --lk-navy: #0b1630;
   --lk-navy-2: #142749;
@@ -310,25 +346,12 @@ const layout = (title, content, req) => {
   --lk-shadow: 0 12px 35px rgba(17, 36, 72, .065);
   --sidebar-w: 260px;
 }
-
-* {
-  box-sizing: border-box;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
+* { box-sizing: border-box; }
+img { max-width: 100%; height: auto; }
+html { scroll-behavior: smooth; }
 body {
   background-color: var(--lk-bg);
-  background-image:
-    radial-gradient(ellipse at 85% 0%,
-      rgba(40,91,234,.075), transparent 36%);
+  background-image: radial-gradient(ellipse at 85% 0%, rgba(40,91,234,.075), transparent 36%);
   color: var(--lk-text);
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
   letter-spacing: -.12px;
@@ -338,18 +361,9 @@ body {
   overflow-wrap: anywhere;
   -webkit-text-size-adjust: 100%;
 }
-
-::selection {
-  background: #cbd9ff;
-  color: var(--lk-navy);
-}
-
 .sidebar {
   width: var(--sidebar-w);
-  background:
-    radial-gradient(ellipse at 0% 0%,
-      rgba(53,103,221,.24), transparent 45%),
-    linear-gradient(165deg, #0b1630, #122647 65%, #101c37);
+  background: radial-gradient(ellipse at 0% 0%, rgba(53,103,221,.24), transparent 45%), linear-gradient(165deg, #0b1630, #122647 65%, #101c37);
   border-right: 1px solid rgba(255,255,255,.07);
   box-shadow: 8px 0 35px rgba(11,22,48,.08);
   color: #fff;
@@ -360,15 +374,12 @@ body {
   z-index: 1000;
   transition: transform .3s ease;
 }
-
 .sidebar-header {
   padding: 23px 20px;
   border-bottom: 1px solid rgba(255,255,255,.09);
   display: flex; justify-content: space-between; align-items: center;
 }
-
 .close-sidebar-btn { display: none; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
-
 .user-sidebar-card {
   margin: 14px;
   border: 1px solid rgba(255,255,255,.09);
@@ -377,11 +388,8 @@ body {
   padding: 12px 15px;
   display: flex; align-items: center; gap: 12px;
 }
-
-.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--lk-blue); image-rendering: -webkit-optimize-contrast; }
-
+.user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--lk-blue); }
 .sidebar-nav { padding: 10px 0; flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
-
 .nav-item {
   margin: 4px 10px;
   width: calc(100% - 20px);
@@ -394,20 +402,13 @@ body {
   display: flex; align-items: center; gap: 12px;
   transition: background .2s ease, color .2s ease;
 }
-
-.nav-item:hover {
-  background: rgba(255,255,255,.09);
-  color: #fff;
-}
-
+.nav-item:hover { background: rgba(255,255,255,.09); color: #fff; }
 .nav-item.active {
   background: linear-gradient(115deg, #356cf2, #2853ce);
   color: #fff;
   box-shadow: 0 6px 20px rgba(40,91,234,.26);
 }
-
 .main-wrapper { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; width: 100%; }
-
 header.topbar {
   min-height: 68px;
   border-bottom: 1px solid rgba(225,232,243,.9);
@@ -418,23 +419,9 @@ header.topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   position: sticky; top: 0; z-index: 900;
 }
-
 .toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--lk-navy); }
 .user-badge { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: .9rem; }
-
-main.content {
-  max-width: 1500px;
-  padding: 32px;
-  margin: 0 auto; width: 100%; min-width: 0;
-}
-
-main.content > h1,
-main.content > h2 {
-  color: var(--lk-navy);
-  letter-spacing: -1px;
-  font-weight: 800;
-}
-
+main.content { max-width: 1500px; padding: 32px; margin: 0 auto; width: 100%; min-width: 0; }
 .card {
   position: relative;
   background: var(--lk-white);
@@ -445,24 +432,7 @@ main.content > h2 {
   margin-bottom: 25px;
   word-wrap: break-word; overflow: hidden;
 }
-
-.card h1,
-.card h2,
-.card h3 {
-  color: var(--lk-navy);
-  font-weight: 750;
-  letter-spacing: -.45px;
-}
-
-.card p {
-  line-height: 1.75;
-}
-
-.tile-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px; margin: 18px 0 30px;
-}
-
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 18px 0 30px; }
 .tile {
   border: 1px solid #e5eaf4;
   border-radius: 20px;
@@ -471,15 +441,9 @@ main.content > h2 {
   box-shadow: 0 8px 24px rgba(17,36,72,.045);
   text-decoration: none; color: var(--lk-text);
   display: flex; flex-direction: column; gap: 10px;
-  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  transition: transform .22s ease, box-shadow .22s ease;
 }
-
-.tile:hover {
-  transform: translateY(-4px);
-  border-color: #bdceff;
-  box-shadow: 0 18px 38px rgba(40,91,234,.11);
-}
-
+.tile:hover { transform: translateY(-4px); border-color: #bdceff; box-shadow: 0 18px 38px rgba(40,91,234,.11); }
 .tile-icon {
   width: 54px; height: 54px;
   border-radius: 17px;
@@ -488,265 +452,45 @@ main.content > h2 {
   font-size: 1.9rem;
   display: flex; align-items: center; justify-content: center;
 }
-
-.tile-title {
-  color: var(--lk-navy);
-  font-size: 1.08rem;
-  font-weight: 750;
-}
-
-.tile-desc {
-  color: var(--lk-muted);
-  line-height: 1.65;
-  font-size: .9rem;
-}
-
-.btn,
-button {
+.btn, button {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   background: var(--lk-blue); color: #fff; border: 0;
   border-radius: 12px; padding: 12px 19px;
-  font: inherit; font-weight: 700; letter-spacing: .05px;
-  text-decoration: none; cursor: pointer; text-align: center;
-  min-height: 44px; max-width: 100%;
-  box-shadow: 0 5px 14px rgba(40,91,234,.13);
-  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; text-align: center;
+  min-height: 44px; box-shadow: 0 5px 14px rgba(40,91,234,.13);
 }
-
-.btn:hover,
-button:hover {
-  filter: brightness(1.025);
-}
-
-.btn:active,
-button:active {
-  transform: scale(.985);
-}
-
 .btn.secondary { background: #f1f5f9; color: #35435c; border: 1px solid var(--lk-line); box-shadow: none; }
 .btn.danger { background: #dc2626; padding: 5px 10px; font-size: .8rem; box-shadow: none; }
 .btn.full { width: 100%; }
-
 label { display: block; font-weight: 650; font-size: .88rem; margin: 12px 0 4px; color: #334155; }
-
-input,
-select,
-textarea {
-  width: 100%;
-  min-height: 44px;
-  background-color: #fff;
-  color: var(--lk-text);
-  border: 1px solid #dce3ef;
-  border-radius: 12px;
-  padding: 12px 15px;
-  font: inherit;
-  max-width: 100%;
+input, select, textarea {
+  width: 100%; min-height: 44px; background-color: #fff; color: var(--lk-text);
+  border: 1px solid #dce3ef; border-radius: 12px; padding: 12px 15px; font: inherit;
 }
-
-input::placeholder,
-textarea::placeholder {
-  color: #94a1b5;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: #7193f5;
-  box-shadow: 0 0 0 4px rgba(40,91,234,.09);
-}
-
-table {
-  max-width: 100%;
-}
-
 .excel-table-container {
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  border: 1px solid var(--lk-line);
-  border-radius: 16px;
-  background: #fff;
-  margin-top: 10px;
-  max-width: 100%;
+  overflow-x: auto; border: 1px solid var(--lk-line); border-radius: 16px; background: #fff; margin-top: 10px;
 }
-
-.excel-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%; font-size: .88rem; min-width: 500px;
-  max-width: 100%;
-}
-
-.excel-table th {
-  background: #142749;
-  color: #fff;
-  font-size: .82rem;
-  font-weight: 700;
-  letter-spacing: .25px;
-  padding: 16px;
-  white-space: nowrap;
-  border: 1px solid #23385e;
-}
-
-.excel-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #edf0f6;
-  border-right: 1px solid #f1f5f9;
-  color: #35435c;
-}
-
-.excel-table tbody tr:last-child td { border-bottom: 0; }
-.excel-table tbody tr:hover { background: #f6f8ff; }
-
+.excel-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .88rem; min-width: 500px; }
+.excel-table th { background: #142749; color: #fff; font-size: .82rem; font-weight: 700; padding: 16px; border: 1px solid #23385e; }
+.excel-table td { padding: 14px 16px; border-bottom: 1px solid #edf0f6; border-right: 1px solid #f1f5f9; color: #35435c; }
 .excel-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
-
-.devoir-card,
-.gallery-card {
-  background: #fff;
-  border-radius: 18px;
-  border: 1px solid var(--lk-line);
-  box-shadow: 0 7px 22px rgba(17,36,72,.05);
-  padding: 20px; margin-bottom: 14px;
-  transition: transform .2s ease, box-shadow .2s ease;
+.devoir-card, .gallery-card {
+  background: #fff; border-radius: 18px; border: 1px solid var(--lk-line);
+  box-shadow: 0 7px 22px rgba(17,36,72,.05); padding: 20px; margin-bottom: 14px;
 }
-
-.devoir-card:hover,
-.gallery-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 30px rgba(17,36,72,.09);
-}
-
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
-.devoir-date-badge.urgent { background: #fee2e2; color: #991b1b; }
-.devoir-img { width: 100%; max-height: 350px; object-fit: contain; background: #f8fafc; border-radius: 8px; border: 1px solid var(--lk-line); margin: 10px 0; cursor: pointer; image-rendering: -webkit-optimize-contrast; }
-
-.student-badge-card {
-  width: 100%; max-width: 360px; margin: 0 auto 20px auto;
-  background: linear-gradient(135deg, #0b1630 0%, #1e3a8a 100%);
-  border-radius: 22px; padding: 20px; color: #fff;
-  box-shadow: 0 18px 40px rgba(15,23,42,.22); border: 2px solid #3b82f6;
-  position: relative; overflow: hidden;
-}
-.badge-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px; }
-.badge-school { font-size: .9rem; font-weight: 900; letter-spacing: 1px; color: var(--lk-gold); }
-.badge-body { display: flex; align-items: center; gap: 16px; }
-.badge-photo { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; border: 3px solid #fff; background: #cbd5e1; image-rendering: -webkit-optimize-contrast; }
-.badge-info { flex: 1; min-width: 0; }
-.badge-name { font-size: 1.1rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
-.badge-code { font-family: monospace; font-size: .9rem; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; font-weight: 700; }
-.badge-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: .75rem; opacity: .85; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; }
-
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 15px; }
-.gallery-card { padding: 0; overflow: hidden; }
-.gallery-img { width: 100%; height: 180px; object-fit: contain; border-bottom: 1px solid var(--lk-line); image-rendering: -webkit-optimize-contrast; }
-.gallery-body { padding: 14px; }
-
-.calendar-grid { 
-  display: grid !important; grid-template-columns: repeat(7, 1fr) !important; 
-  gap: 8px !important; margin-top: 14px !important; text-align: center !important; 
-}
+.calendar-grid { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 8px !important; margin-top: 14px !important; text-align: center !important; }
 .calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--lk-muted); text-transform: uppercase; padding: 6px 0; }
 .calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--lk-line); }
-.calendar-cell.empty { background: transparent; border: none; }
-.calendar-cell.present { background: #22c55e; color: #fff; border-color: #16a34a; }
-.calendar-cell.absent { background: #ef4444; color: #fff; border-color: #dc2626; }
-.calendar-cell.retard { background: #64748b; color: #fff; border-color: #475569; }
-
-a { transition: color .18s ease; -webkit-tap-highlight-color: transparent; }
-
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid #8eacff;
-  outline-offset: 3px;
-}
-
+.calendar-cell.present { background: #22c55e; color: #fff; }
+.calendar-cell.absent { background: #ef4444; color: #fff; }
+.calendar-cell.retard { background: #64748b; color: #fff; }
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-wrapper { margin-left: 0; }
-  .toggle-btn { display: block; }
-  .close-sidebar-btn { display: block; }
-
-  main.content {
-    width: 100%;
-    min-width: 0;
-    padding: 14px 11px;
-  }
-
-  .card {
-    padding: 16px;
-    margin-bottom: 16px;
-    border-radius: 16px;
-  }
-
-  .tile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 11px;
-  }
-
-  .tile {
-    min-width: 0;
-    padding: 14px;
-  }
-
-  .excel-table-container {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .excel-table {
-    min-width: 560px;
-  }
-
-  form input,
-  form select,
-  form textarea {
-    width: 100%;
-  }
-
-  button,
-  .btn {
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
-  img {
-    object-fit: contain;
-  }
-}
-
-@media (max-width: 380px) {
-  .tile-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  main.content {
-    padding: 10px 8px;
-  }
-
-  .card {
-    padding: 13px;
-  }
-}
-
-@media print {
-  body { background: #fff !important; display: block !important; }
-  .sidebar, header.topbar, .no-print { display: none !important; }
-  .main-wrapper { margin: 0 !important; width: 100% !important; }
-  main.content { max-width: none !important; padding: 0 !important; margin: 0 !important; }
-  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
-  a { color: inherit !important; text-decoration: none !important; }
-  table { width: 100% !important; }
-}
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    transition-duration: .01ms !important;
-    animation-duration: .01ms !important;
-  }
+  .toggle-btn, .close-sidebar-btn { display: block; }
+  main.content { padding: 14px 11px; }
 }
 </style>
 </head>
@@ -778,17 +522,13 @@ textarea:focus-visible {
       ${isAuth ? `<a class="btn secondary" href="/deconnexion" style="padding:6px 12px;font-size:.8rem">Sortir</a>` : `<a class="btn" href="/connexion" style="padding:6px 12px;font-size:.8rem">Connexion</a>`}
     </div>
   </header>
-
-  <main class="content">
-    ${content}
-  </main>
+  <main class="content">${content}</main>
 </div>
 
 </body>
 </html>`;
 };
 
-// PROTECTIONS DES ACCÈS
 function requireAdmin(req, res, next) {
   if (!req.session.user) return res.redirect("/connexion");
   if (!rolesAdmin.includes(req.session.user.role)) return res.redirect(getHomeByRole(req.session.user.role));
@@ -835,33 +575,15 @@ app.use((req, res, next) => {
   next();
 });
 
-
-// ESPACE PROFESSEUR — corrige le lien de redirection utilisé à la connexion
-app.get("/prof", requireStaff, (req, res) => {
-  if (!rolesProf.includes(req.session.user.role)) return res.redirect(getHomeByRole(req.session.user.role));
-  const content = `
-    <section class="card"><h1>👨‍🏫 Espace Professeur</h1>
-      <p>Accès rapide aux outils pédagogiques de LEKOL S&amp;H.</p></section>
-    <div class="tile-grid">
-      <a href="/devoirs" class="tile"><div class="tile-icon">📖</div><div class="tile-title">Devoirs &amp; Leçons</div><div class="tile-desc">Publier et consulter le cahier de textes.</div></a>
-      <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'appel</div><div class="tile-desc">Enregistrer les présences des élèves.</div></a>
-      <a href="/admin/notes" class="tile"><div class="tile-icon">📊</div><div class="tile-title">Saisie des notes</div><div class="tile-desc">Enregistrer les évaluations.</div></a>
-      <a href="/messages" class="tile"><div class="tile-icon">✉️</div><div class="tile-title">Messagerie</div><div class="tile-desc">Communiquer avec les membres autorisés.</div></a>
-    </div>`;
-  res.send(layout("Espace Professeur", content, req));
-});
-
 // ROUTE ACCUEIL
 app.get("/", async (req, res) => {
   try {
     const todayStr = dateFr(getTodayDate());
     const isAuth = !!req.session.user;
     const role = isAuth ? req.session.user.role : null;
-
     const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC LIMIT 5").catch(() => ({ rows: [] }));
 
     let tilesHtml = "";
-
     if (!isAuth) {
       tilesHtml = `
         <a href="/connexion" class="tile"><div class="tile-icon">🔑</div><div class="tile-title">Se Connecter</div><div class="tile-desc">Accéder à son espace privé</div></a>
@@ -903,12 +625,10 @@ app.get("/", async (req, res) => {
         <h1 style="font-size:1.8rem;margin:10px 0 4px;color:#fff">Portail Officiel — LEKOL S&amp;H</h1>
         <p style="opacity:.9;font-size:.9rem">Plateforme de gestion scolaire officielle.</p>
       </div>
-
       <section class="card">
-        <h2 style="margin-bottom:12px;color:var(--lk-navy);display:flex;align-items:center;gap:8px">📢 Panneau d'Annonces &amp; Communiqués</h2>
+        <h2 style="margin-bottom:12px;color:var(--lk-navy)">📢 Panneau d'Annonces &amp; Communiqués</h2>
         ${annoncesHtml}
       </section>
-
       <h2 style="margin-bottom:14px;color:var(--lk-navy)">Accès Rapides</h2>
       <div class="tile-grid">${tilesHtml}</div>`;
 
@@ -930,23 +650,10 @@ app.get("/devoirs", async (req, res) => {
     }
 
     if (!isAuth) {
-      const content = `
-        <section class="card" style="text-align:center;padding:40px 20px;">
-          <h2>🔒 Espace Sécurisé</h2>
-          <p style="color:var(--lk-muted);margin:10px 0 20px">Vous devez vous connecter avec votre compte pour consulter le cahier de textes et les devoirs de votre classe.</p>
-          <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter maintenant</a>
-        </section>`;
-      return res.send(layout("Connexion Requise", content, req));
+      return res.send(layout("Connexion Requise", `<section class="card" style="text-align:center;padding:40px 20px;"><h2>🔒 Espace Sécurisé</h2><p style="color:var(--lk-muted);margin:10px 0 20px">Vous devez vous connecter pour consulter les devoirs.</p><a href="/connexion" class="btn">🔑 Se Connecter</a></section>`, req));
     }
 
-    let selectedClasseId;
-    if (isEleve) {
-      selectedClasseId = req.session.user.classe_id;
-    } else if (isStaff && req.query.classe_id) {
-      selectedClasseId = Number(req.query.classe_id);
-    } else {
-      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (req.session.user.classe_id || classes.rows[0].id);
-    }
+    let selectedClasseId = isEleve ? req.session.user.classe_id : (req.query.classe_id ? Number(req.query.classe_id) : (req.session.user.classe_id || classes.rows[0].id));
 
     const [selectedClasse, devoirsRes] = await Promise.all([
       pool.query("SELECT nom FROM classes WHERE id=$1", [selectedClasseId]),
@@ -954,168 +661,39 @@ app.get("/devoirs", async (req, res) => {
     ]);
 
     const classeNom = selectedClasse.rows[0]?.nom || "Ma Classe";
-
-    let selectorHtml = "";
-    if (isStaff) {
-      const classOptionsHtml = classes.rows.map(c => `
-        <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
-      `).join("");
-
-      selectorHtml = `
-        <div style="min-width:200px">
-          <label style="margin-top:0">Sélectionner une classe :</label>
-          <select onchange="window.location.href='/devoirs?classe_id=' + this.value">
-            ${classOptionsHtml}
-          </select>
-        </div>`;
-    }
+    let selectorHtml = isStaff ? `<div style="min-width:200px"><label style="margin-top:0">Sélectionner une classe :</label><select onchange="window.location.href='/devoirs?classe_id=' + this.value">${classes.rows.map(c => `<option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>`).join("")}</select></div>` : "";
 
     const today = getTodayDate();
-
     const devoirsHtml = devoirsRes.rows.map(d => {
       const isUrgent = d.date_pour_fmt <= today;
       const dateLabel = d.date_pour_fmt === today ? "📌 POUR AUJOURD'HUI" : (d.date_pour_fmt < today ? "⚠️ DÉPASSÉ" : `📅 Pour le ${dateFr(d.date_pour_fmt)}`);
-      const imageHtml = d.image_url ? `<a href="${h(d.image_url)}" target="_blank"><img src="${h(d.image_url)}" class="devoir-img" alt="Exercice en image"></a>` : "";
-
       return `
         <div class="devoir-card" style="border-left-color:${isUrgent ? '#dc2626' : '#285bea'}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-            <div>
-              <span class="devoir-date-badge ${isUrgent ? 'urgent' : ''}">${dateLabel}</span>
-              <span class="excel-badge" style="margin-left:6px">${h(d.matiere)}</span>
-            </div>
-            <span style="font-size:.78rem;color:var(--lk-muted)">Prof. <b>${h(d.professeur || 'Enseignant')}</b></span>
-          </div>
-
+          <span class="devoir-date-badge ${isUrgent ? 'urgent' : ''}">${dateLabel}</span>
+          <span class="excel-badge" style="margin-left:6px">${h(d.matiere)}</span>
           <h3 style="color:var(--lk-navy);margin:8px 0 4px">${h(d.titre)}</h3>
-          <p style="color:#334155;font-size:.92rem;white-space:pre-wrap;margin-bottom:10px">${h(d.description)}</p>
-
-          ${imageHtml}
-
-          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--lk-line);padding-top:8px;font-size:.78rem;color:var(--lk-muted)">
-            <span>Publié le ${dateFr(d.date_pub_fmt)}</span>
-            ${isStaff ? `
-              <form method="post" action="/admin/devoir/supprimer" style="display:inline">
-                ${csrfField(req)}
-                <input type="hidden" name="id" value="${d.id}">
-                <input type="hidden" name="classe_id" value="${selectedClasseId}">
-                <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce devoir ?')">🗑️ Supprimer</button>
-              </form>` : ""}
-          </div>
+          <p style="color:#334155;font-size:.92rem;white-space:pre-wrap">${h(d.description)}</p>
         </div>`;
-    }).join("") || "<p style='color:var(--lk-muted);padding:20px;text-align:center'>Aucun devoir ni leçon enregistrés pour cette classe.</p>";
-
-    let formAjoutHtml = "";
-    if (isStaff) {
-      formAjoutHtml = `
-        <section class="card" style="border:2px solid var(--lk-blue);background:#eff6ff">
-          <h2>➕ Donner un Devoir / Leçon pour : <span style="color:var(--lk-blue)">${h(classeNom)}</span></h2>
-          <form method="post" action="/admin/devoir">
-            ${csrfField(req)}
-            <input type="hidden" name="classe_id" value="${selectedClasseId}">
-
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px">
-              <div>
-                <label>Matière</label>
-                <input name="matiere" required placeholder="Ex. Mathématiques, Français...">
-              </div>
-              <div>
-                <label>Pour quelle date ? (Date limite/rendu)</label>
-                <input type="date" name="date_pour" value="${today}" required>
-              </div>
-            </div>
-
-            <label>Titre du devoir / sujet de la leçon</label>
-            <input name="titre" required placeholder="Ex. Exercices p. 42 #1 à 5 / Leçon à étudier">
-
-            <label>Explications détaillées &amp; Consignes</label>
-            <textarea name="description" rows="4" required placeholder="Écrivez clairement les consignes ou les numéros de l'exercice..."></textarea>
-
-            <label>📷 Joindre une Photo du Livre / Exercice (Optionnel) :</label>
-            <input type="file" id="devoirFileInput" accept="image/*" style="display:none">
-            <input type="hidden" name="image_url" id="devoirImageBase64">
-            
-            <button type="button" class="btn secondary" style="width:100%;margin-top:6px" onclick="document.getElementById('devoirFileInput').click()">📁 Prenez en photo / Choisir une image</button>
-            <div id="previewText" style="font-size:.8rem;color:#15803d;margin-top:6px;font-weight:bold"></div>
-
-            <button type="submit" class="btn full" style="margin-top:14px">📢 Publier le Devoir</button>
-          </form>
-        </section>
-
-        <script>
-          document.getElementById('devoirFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = function(event) {
-                document.getElementById('devoirImageBase64').value = event.target.result;
-                document.getElementById('previewText').innerText = "✅ Photo sélectionnée (" + file.name + ")";
-              };
-              reader.readAsDataURL(file);
-            }
-          });
-        </script>`;
-    }
+    }).join("") || "<p style='color:var(--lk-muted);padding:20px;text-align:center'>Aucun devoir enregistré.</p>";
 
     const content = `
       <div class="card">
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px">
-          <div>
-            <h2>📖 Devoirs &amp; Leçons (Cahier de Textes)</h2>
-            <p style="color:var(--lk-muted)">Devoirs et révisions de la classe : <b style="color:var(--lk-blue)">${h(classeNom)}</b></p>
-          </div>
+          <div><h2>📖 Devoirs &amp; Leçons</h2><p style="color:var(--lk-muted)">Classe : <b style="color:var(--lk-blue)">${h(classeNom)}</b></p></div>
           ${selectorHtml}
         </div>
       </div>
-
-      ${formAjoutHtml}
-
-      <section class="card">
-        <h2 style="margin-bottom:15px">📋 Liste des Travaux &amp; Leçons</h2>
-        ${devoirsHtml}
-      </section>`;
+      <section class="card"><h2 style="margin-bottom:15px">📋 Liste des Travaux</h2>${devoirsHtml}</section>`;
 
     res.send(layout(`Devoirs - ${classeNom}`, content, req));
-  } catch (e) {
-    console.error("ERREUR DEVOIRS:", e.message);
-    res.status(500).send(layout("Erreur", `<section class='card'><h2>Erreur d'affichage des devoirs</h2><p style='color:#dc2626'>${h(e.message)}</p></section>`, req));
-  }
-});
-
-app.post("/admin/devoir", requireStaff, async (req, res) => {
-  const { classe_id, matiere, titre, description, date_pour, image_url } = req.body;
-  const user = req.session.user;
-  const profNom = `${user.prenom} ${user.nom}`;
-  try {
-    if (classe_id && matiere && titre && description && date_pour) {
-      await pool.query(
-        "INSERT INTO devoirs (classe_id, matiere, titre, description, date_pour, professeur, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [Number(classe_id), String(matiere).trim(), String(titre).trim(), String(description).trim(), date_pour, profNom, image_url || null]
-      );
-    }
-    res.redirect(`/devoirs?classe_id=${classe_id}`);
-  } catch (e) {
-    res.status(500).send("Erreur publication devoir : " + e.message);
-  }
-});
-
-app.post("/admin/devoir/supprimer", requireStaff, async (req, res) => {
-  const { id, classe_id } = req.body;
-  try {
-    await pool.query("DELETE FROM devoirs WHERE id=$1", [Number(id)]);
-    res.redirect(`/devoirs?classe_id=${classe_id}`);
-  } catch (e) {
-    res.status(500).send("Erreur suppression devoir.");
-  }
+  } catch (e) { res.status(500).send("Erreur devoirs."); }
 });
 
 // ROUTE PRISE D'APPEL
 app.get("/admin/appel", requireStaff, async (req, res) => {
   try {
     const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
-    if (classes.rows.length === 0) {
-      return res.send(layout("Prise d'Appel", "<section class='card'><h2>Aucune classe</h2><p>Veuillez d'abord ajouter des classes.</p></section>", req));
-    }
+    if (classes.rows.length === 0) return res.send(layout("Prise d'Appel", "<section class='card'><h2>Aucune classe</h2></section>", req));
 
     const selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : classes.rows[0].id;
     const selectedDate = req.query.date || getTodayDate();
@@ -1128,24 +706,11 @@ app.get("/admin/appel", requireStaff, async (req, res) => {
     const presenceMap = {};
     presences.rows.forEach(p => { presenceMap[p.eleve_id] = p.statut; });
 
-    const classOptionsHtml = classes.rows.map(c => `
-      <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
-    `).join("");
-
     const rowsHtml = students.rows.map(s => {
       const currentStatut = presenceMap[s.id] || "PRESENT";
-      const photo = s.photo_url || "https://via.placeholder.com/40";
       return `
         <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:10px">
-              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;image-rendering:-webkit-optimize-contrast;">
-              <div>
-                <b>${h(s.nom)} ${h(s.prenom)}</b>
-                <div style="font-size:.78rem;color:var(--lk-muted)">${h(s.code_eleve)}</div>
-              </div>
-            </div>
-          </td>
+          <td><b>${h(s.nom)} ${h(s.prenom)}</b> <span style="font-size:.78rem;color:var(--lk-muted)">(${h(s.code_eleve)})</span></td>
           <td>
             <select name="statut_${s.id}" style="padding:6px 10px">
               <option value="PRESENT" ${currentStatut === "PRESENT" ? "selected" : ""}>✅ Présent</option>
@@ -1157,38 +722,19 @@ app.get("/admin/appel", requireStaff, async (req, res) => {
     }).join("") || "<tr><td colspan='2' style='text-align:center;padding:15px'>Aucun élève inscrit dans cette classe.</td></tr>";
 
     const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
+      <div style="margin-bottom:15px"><a href="/admin" class="btn secondary">⬅️ Retour Panneau Direction</a></div>
       <section class="card">
         <h2>📝 Prise d'Appel / Fiche de Présence</h2>
-        <p style="color:var(--lk-muted);margin-bottom:15px">Sélectionnez la classe et enregistrez les présences du jour.</p>
-        
-        <form method="get" action="/admin/appel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;background:#f8fafc;padding:12px;border-radius:10px">
-          <div style="flex:1;min-width:180px">
-            <label style="margin-top:0">Classe :</label>
-            <select name="classe_id" onchange="this.form.submit()">${classOptionsHtml}</select>
-          </div>
-          <div style="flex:1;min-width:180px">
-            <label style="margin-top:0">Date :</label>
-            <input type="date" name="date" value="${selectedDate}" onchange="this.form.submit()">
-          </div>
+        <form method="get" action="/admin/appel" style="display:flex;gap:12px;margin-bottom:20px">
+          <select name="classe_id" onchange="this.form.submit()">${classes.rows.map(c => `<option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>`).join("")}</select>
+          <input type="date" name="date" value="${selectedDate}" onchange="this.form.submit()">
         </form>
-
         <form method="post" action="/admin/appel">
           ${csrfField(req)}
           <input type="hidden" name="classe_id" value="${selectedClasseId}">
           <input type="hidden" name="date" value="${selectedDate}">
-
-          <div class="excel-table-container">
-            <table class="excel-table">
-              <thead><tr><th>Élève</th><th>Statut de Présence</th></tr></thead>
-              <tbody>${rowsHtml}</tbody>
-            </table>
-          </div>
-
-          ${students.rows.length > 0 ? `<button type="submit" class="btn full" style="margin-top:15px">💾 Enregistrer l'Appel du ${dateFr(selectedDate)}</button>` : ""}
+          <div class="excel-table-container"><table class="excel-table"><thead><tr><th>Élève</th><th>Statut</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
+          ${students.rows.length > 0 ? `<button type="submit" class="btn full" style="margin-top:15px">💾 Enregistrer l'Appel</button>` : ""}
         </form>
       </section>`;
 
@@ -1209,986 +755,53 @@ app.post("/admin/appel", requireStaff, async (req, res) => {
       `, [s.id, Number(classe_id), date, statut]);
     }
     res.redirect(`/admin/appel?classe_id=${classe_id}&date=${date}`);
-  } catch (e) {
-    console.error("ERREUR APPEL DETAIL:", e.message);
-    res.status(500).send("Erreur enregistrement appel : " + e.message);
-  }
+  } catch (e) { res.status(500).send("Erreur enregistrement appel."); }
 });
 
 // PANNEAU DIRECTION
-app.get("/admin", requireAdmin, async (req, res) => {
+app.get("/admin", requireAdmin, (req, res) => {
   const content = `
-    <div class="card">
-      <h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2>
-      <p style="color:var(--lk-muted)">Sélectionnez la sous-page administrative de votre choix :</p>
-    </div>
-
+    <div class="card"><h2>⚙️ Panneau de Direction — LEKOL S&amp;H</h2></div>
     <div class="tile-grid">
-      <a href="/devoirs" class="tile">
-        <div class="tile-icon">📖</div>
-        <div class="tile-title">Devoirs &amp; Leçons</div>
-        <div class="tile-desc">Cahier de textes global</div>
-      </a>
-
-      <a href="/admin/classes" class="tile">
-        <div class="tile-icon">🏫</div>
-        <div class="tile-title">Gestion des Classes</div>
-        <div class="tile-desc">Ajouter, voir ou supprimer des classes</div>
-      </a>
-
-      <a href="/admin/eleves" class="tile">
-        <div class="tile-icon">🎓</div>
-        <div class="tile-title">Inscriptions &amp; Élèves</div>
-        <div class="tile-desc">Inscrire et filtrer les élèves par classe</div>
-      </a>
-
-      <a href="/admin/staff" class="tile">
-        <div class="tile-icon">👥</div>
-        <div class="tile-title">Gestion du Staff</div>
-        <div class="tile-desc">Comptes Direction, Professeurs et Parents</div>
-      </a>
-
-      <a href="/admin/annonces" class="tile">
-        <div class="tile-icon">📢</div>
-        <div class="tile-title">Annonces &amp; Communiqués</div>
-        <div class="tile-desc">Publier des annonces officielles</div>
-      </a>
-
-      <a href="/admin/notes" class="tile">
-        <div class="tile-icon">📊</div>
-        <div class="tile-title">Saisie des Notes</div>
-        <div class="tile-desc">Enregistrer les notes et devoirs</div>
-      </a>
-
-      <a href="/admin/appel" class="tile">
-        <div class="tile-icon">📝</div>
-        <div class="tile-title">Prise d'Appel</div>
-        <div class="tile-desc">Fiche de présence par classe</div>
-      </a>
+      <a href="/admin/classes" class="tile"><div class="tile-icon">🏫</div><div class="tile-title">Classes</div><div class="tile-desc">Gérer les classes</div></a>
+      <a href="/admin/eleves" class="tile"><div class="tile-icon">🎓</div><div class="tile-title">Élèves</div><div class="tile-desc">Inscriptions et liste des élèves</div></a>
+      <a href="/admin/appel" class="tile"><div class="tile-icon">📝</div><div class="tile-title">Prise d'Appel</div><div class="tile-desc">Présences du jour</div></a>
+      <a href="/galerie" class="tile"><div class="tile-icon">📸</div><div class="tile-title">Galerie</div><div class="tile-desc">Photos scolaires</div></a>
     </div>`;
-
   res.send(layout("Panneau Direction", content, req));
 });
 
-// 1. GESTION DES CLASSES
+// GESTION DES CLASSES
 app.get("/admin/classes", requireAdmin, async (req, res) => {
   try {
-    const classesWithCount = await pool.query("SELECT c.id, c.nom, c.niveau, COUNT(u.id) AS total_eleves FROM classes c LEFT JOIN utilisateurs u ON u.classe_id=c.id AND u.role='ELEVE' GROUP BY c.id ORDER BY c.nom ASC").catch(() => ({ rows: [] }));
-
-    const classRows = classesWithCount.rows.map(c => `
-      <tr>
-        <td><b>${h(c.nom)}</b></td>
-        <td><span class="excel-badge">${h(c.niveau)}</span></td>
-        <td><strong>${c.total_eleves}</strong> élève(s)</td>
-        <td>
-          <form method="post" action="/admin/classe/supprimer" style="display:inline">
-            ${csrfField(req)}
-            <input type="hidden" name="id" value="${c.id}">
-            <button class="btn danger" onclick="return confirm('Supprimer cette classe ?')">🗑️ Supprimer</button>
-          </form>
-        </td>
-      </tr>
-    `).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucune classe créée.</td></tr>";
-
-    const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
-      <section class="card" style="border:2px solid var(--lk-blue);background:#eff6ff">
-        <h2>🏫 Ajouter une Nouvelle Classe</h2>
-        <form method="post" action="/admin/classe">${csrfField(req)}
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
-            <div>
-              <label>Nom de la classe</label>
-              <input name="nom" required placeholder="Ex. 1ère Année A, NS II...">
-            </div>
-            <div>
-              <label>Niveau scolaire</label>
-              <select name="niveau">
-                <option value="Maternelle">Maternelle / Kindergarten</option>
-                <option value="Fondamental" selected>Fondamental</option>
-                <option value="Nouveau Secondaire">Nouveau Secondaire</option>
-              </select>
-            </div>
-          </div>
-          <button style="margin-top:12px" class="btn" type="submit">➕ Créer la Classe</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>📋 Classes Officiellement Ouvertes (${classesWithCount.rows.length})</h2>
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead><tr><th>Nom de la Classe</th><th>Niveau</th><th>Total Élèves</th><th>Action</th></tr></thead>
-            <tbody>${classRows}</tbody>
-          </table>
-        </div>
-      </section>`;
-
-    res.send(layout("Gestion des Classes", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page classes."); }
+    const classes = await pool.query("SELECT c.id, c.nom, c.niveau, COUNT(u.id) AS total_eleves FROM classes c LEFT JOIN utilisateurs u ON u.classe_id=c.id AND u.role='ELEVE' GROUP BY c.id ORDER BY c.nom ASC");
+    const classRows = classes.rows.map(c => `<tr><td><b>${h(c.nom)}</b></td><td><span class="excel-badge">${h(c.niveau)}</span></td><td><strong>${c.total_eleves}</strong> élève(s)</td></tr>`).join("");
+    res.send(layout("Classes", `<div class="card"><a href="/admin" class="btn secondary">⬅️ Retour</a><h2>🏫 Classes</h2><div class="excel-table-container"><table class="excel-table"><thead><tr><th>Nom</th><th>Niveau</th><th>Total Élèves</th></tr></thead><tbody>${classRows}</tbody></table></div></div>`, req));
+  } catch (e) { res.status(500).send("Erreur classes."); }
 });
 
-// 2. ÉLÈVES & INSCRIPTIONS
+// GESTION DES ÉLÈVES
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
-    const selectedClasseFilter = req.query.filter_classe_id ? Number(req.query.filter_classe_id) : null;
-
-    let studentQuery = "SELECT u.id, u.nom, u.prenom, u.code_eleve, u.photo_url, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE'";
-    const studentParams = [];
-
-    if (selectedClasseFilter) {
-      studentQuery += " AND u.classe_id=$1";
-      studentParams.push(selectedClasseFilter);
-    }
-    studentQuery += " ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
-
-    const [classes, students] = await Promise.all([
-      pool.query("SELECT id, nom FROM classes ORDER BY nom ASC").catch(() => ({ rows: [] })),
-      pool.query(studentQuery, studentParams).catch(() => ({ rows: [] }))
-    ]);
-
-    const classOpts = classes.rows.map(c => `<option value="${c.id}">${h(c.nom)}</option>`).join("");
-    const filterClassOpts = `<option value="">Toutes les classes</option>` + classes.rows.map(c => `
-      <option value="${c.id}" ${c.id === selectedClasseFilter ? "selected" : ""}>${h(c.nom)}</option>
-    `).join("");
-
-    const studentRows = students.rows.map(s => {
-      const photo = s.photo_url || "https://via.placeholder.com/36";
-      return `
-        <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:10px">
-              <img src="${h(photo)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;image-rendering:-webkit-optimize-contrast;">
-              <b>${h(s.nom)} ${h(s.prenom)}</b>
-            </div>
-          </td>
-          <td><b>${h(s.nom_classe || "Non assignée")}</b></td>
-          <td><span class="excel-badge" style="font-family:monospace;font-size:.85rem">${h(s.code_eleve)}</span></td>
-          <td>
-            <form method="post" action="/admin/eleve/supprimer" style="display:inline">
-              ${csrfField(req)}
-              <input type="hidden" name="id" value="${s.id}">
-              <button class="btn danger" onclick="return confirm('Supprimer cet élève ?')">🗑️ Supprimer</button>
-            </form>
-          </td>
-        </tr>`;
-    }).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucun élève trouvé.</td></tr>";
-
-    const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
-      <section class="card">
-        <h2>➕ Inscrire un Nouvel Élève</h2>
-        <form method="post" action="/admin/eleve">${csrfField(req)}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
-            <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
-          </div>
-          <label>Classe</label><select name="classe_id" required><option value="">Choisir la classe</option>${classOpts}</select>
-          <label>Mot de passe</label><input type="password" name="password" value="ecole2026" required>
-          <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Élève</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
-          <div><h2 style="margin:0">🎓 Liste des Élèves Inscrits (${students.rows.length})</h2></div>
-          <div style="min-width:200px">
-            <select style="padding:8px 12px;font-weight:bold" onchange="window.location.href='/admin/eleves?filter_classe_id=' + this.value">
-              ${filterClassOpts}
-            </select>
-          </div>
-        </div>
-
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead><tr><th>Élève</th><th>Classe</th><th>Code Élève Unique</th><th>Action</th></tr></thead>
-            <tbody>${studentRows}</tbody>
-          </table>
-        </div>
-      </section>`;
-
-    res.send(layout("Gestion des Élèves", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page élèves."); }
+    const students = await pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY c.nom ASC, u.nom ASC");
+    const studentRows = students.rows.map(s => `<tr><td><b>${h(s.nom)} ${h(s.prenom)}</b></td><td><b>${h(s.nom_classe || "Non assignée")}</b></td><td><span class="excel-badge">${h(s.code_eleve)}</span></td></tr>`).join("");
+    res.send(layout("Élèves", `<div class="card"><a href="/admin" class="btn secondary">⬅️ Retour</a><h2>🎓 Élèves Inscrits (${students.rows.length})</h2><div class="excel-table-container"><table class="excel-table"><thead><tr><th>Élève</th><th>Classe</th><th>Code Unique</th></tr></thead><tbody>${studentRows}</tbody></table></div></div>`, req));
+  } catch (e) { res.status(500).send("Erreur élèves."); }
 });
 
-// 3. GESTION DU STAFF
-app.get("/admin/staff", requireAdmin, async (req, res) => {
-  try {
-    const users = await pool.query("SELECT u.id, u.nom, u.prenom, u.role, u.email FROM utilisateurs u WHERE u.role != 'ELEVE' ORDER BY u.id DESC").catch(() => ({ rows: [] }));
-
-    const staffRows = users.rows.map(u => `
-      <tr>
-        <td><b>${h(u.nom)} ${h(u.prenom)}</b></td>
-        <td><span class="excel-badge">${h(u.role)}</span></td>
-        <td>${h(u.email || "Non renseigné")}</td>
-      </tr>
-    `).join("") || "<tr><td colspan='3' style='text-align:center'>Aucun membre créé.</td></tr>";
-
-    const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
-      <section class="card" style="border:2px solid var(--lk-blue)">
-        <h2>👑 Créer un Compte Staff / Admin / Prof</h2>
-        <form method="post" action="/admin/utilisateur">${csrfField(req)}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div><label>Nom</label><input name="nom" required placeholder="Nom"></div>
-            <div><label>Prénom</label><input name="prenom" required placeholder="Prénom"></div>
-          </div>
-          <label>Rôle du Compte</label>
-          <select name="role" required>
-            <option value="ADMIN">Administrateur (Direction)</option>
-            <option value="PROF">Professeur / Enseignant</option>
-            <option value="TITULAIRE">Professeur Titulaire</option>
-            <option value="PARENT">Parent d'Élève</option>
-          </select>
-          <label>E-mail ou Identifiant de connexion</label>
-          <input name="email" required placeholder="Ex. direction@lekol.com">
-          <label>Mot de passe</label>
-          <input type="password" name="password" required placeholder="••••••••">
-          <button style="margin-top:14px" class="btn full" type="submit">Créer le Compte Staff</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>👥 Équipe Administrative &amp; Enseignants (${users.rows.length})</h2>
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead><tr><th>Nom &amp; Prénom</th><th>Rôle</th><th>Identifiant / E-mail</th></tr></thead>
-            <tbody>${staffRows}</tbody>
-          </table>
-        </div>
-      </section>`;
-
-    res.send(layout("Gestion du Staff", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page staff."); }
-});
-
-// 4. ANNONCES
-app.get("/admin/annonces", requireAdmin, async (req, res) => {
-  try {
-    const annonces = await pool.query("SELECT * FROM annonces ORDER BY id DESC").catch(() => ({ rows: [] }));
-
-    const annoncesHtml = annonces.rows.map(a => `
-      <div style="border-left:4px solid var(--lk-blue);padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:12px">
-        <strong style="color:var(--lk-navy);font-size:1rem;display:block">${h(a.titre)}</strong>
-        <span style="font-size:.78rem;color:var(--lk-muted)">Publié le ${dateFr(a.date_pub)} par <b>${h(a.auteur)}</b></span>
-        <p style="margin-top:6px;font-size:.9rem;color:#334155">${h(a.contenu)}</p>
-      </div>
-    `).join("") || "<p style='color:var(--lk-muted)'>Aucune annonce publiée.</p>";
-
-    const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
-      <section class="card">
-        <h2>📢 Publier une Annonce Officielle</h2>
-        <form method="post" action="/admin/annonce">${csrfField(req)}
-          <label>Titre du Communiqué</label>
-          <input name="titre" required placeholder="Ex. Réunion des parents d'élèves">
-          <label>Contenu du Message</label>
-          <textarea name="contenu" rows="4" required placeholder="Détails du message..."></textarea>
-          <button style="margin-top:12px" class="btn full" type="submit">Publier l'Annonce</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>📋 Historique des Communiqués</h2>
-        ${annoncesHtml}
-      </section>`;
-
-    res.send(layout("Gestion des Annonces", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page annonces."); }
-});
-
-// 5. SAISIE DES NOTES
-app.get("/admin/notes", requireStaff, async (req, res) => {
-  try {
-    const students = await pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY c.nom ASC, u.nom ASC").catch(() => ({ rows: [] }));
-    const studentOpts = students.rows.map(s => `<option value="${s.id}">${h(s.nom)} ${h(s.prenom)} (${h(s.nom_classe || "Sans classe")})</option>`).join("");
-
-    const content = `
-      <div style="margin-bottom:15px">
-        <a href="/admin" class="btn secondary" style="padding:6px 12px;font-size:.85rem">⬅️ Retour au Panneau Direction</a>
-      </div>
-
-      <section class="card">
-        <h2>📊 Saisir Note / Devoir</h2>
-        <form method="post" action="/admin/note">${csrfField(req)}
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
-            <div><label>Élève</label><select name="eleve_id" required><option value="">Choisir un élève</option>${studentOpts}</select></div>
-            <div>
-              <label>Type d'Évaluation</label>
-              <select name="type_eval" required>
-                <option value="Devoir Maison">Devoir Maison</option>
-                <option value="Exercice en Classe">Exercice en Classe</option>
-                <option value="Contrôle">Contrôle</option>
-                <option value="Examen">Examen</option>
-              </select>
-            </div>
-            <div><label>Matière</label><input name="matiere" required placeholder="Ex. Mathématiques"></div>
-            <div><label>Note obtenue</label><input type="number" step="0.5" name="note" required placeholder="8.5"></div>
-            <div><label>Sur combien ?</label><input type="number" name="total_max" value="100" required placeholder="100 ou 10"></div>
-            <div><label>Période</label><input name="periode" required placeholder="Ex. 1er Contrôle"></div>
-          </div>
-          <button style="margin-top:14px" class="btn full" type="submit">Enregistrer la Note</button>
-        </form>
-      </section>`;
-
-    res.send(layout("Saisie des Notes", content, req));
-  } catch (e) { res.status(500).send("Erreur sous-page notes."); }
-});
-
-app.post("/admin/classe", requireAdmin, async (req, res) => {
-  const { nom, niveau } = req.body;
-  try {
-    if (nom) {
-      await pool.query("INSERT INTO classes (nom, niveau) VALUES ($1, $2)", [String(nom).trim(), String(niveau || "Fondamental")]);
-    }
-    res.redirect("/admin/classes");
-  } catch (e) { res.status(500).send("Erreur ajout classe."); }
-});
-
-app.post("/admin/classe/supprimer", requireAdmin, async (req, res) => {
-  const { id } = req.body;
-  try {
-    await pool.query("DELETE FROM classes WHERE id=$1", [Number(id)]);
-    res.redirect("/admin/classes");
-  } catch (e) { res.status(500).send("Erreur suppression classe."); }
-});
-
-app.post("/admin/utilisateur", requireAdmin, async (req, res) => {
-  const { nom, prenom, role, email, password } = req.body;
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    await pool.query(
-      "INSERT INTO utilisateurs (nom, prenom, role, email, mot_de_passe) VALUES ($1, $2, $3, $4, $5)",
-      [String(nom).trim(), String(prenom).trim(), String(role), String(email).trim(), hash]
-    );
-    res.redirect("/admin/staff");
-  } catch (e) { res.status(500).send("Erreur création utilisateur."); }
-});
-
-app.post("/admin/annonce", requireAdmin, async (req, res) => {
-  const { titre, contenu } = req.body;
-  try {
-    await pool.query("INSERT INTO annonces (titre, contenu, auteur) VALUES ($1, $2, $3)", [String(titre).trim(), String(contenu).trim(), "Direction"]);
-    res.redirect("/admin/annonces");
-  } catch (e) { res.status(500).send("Erreur annonce."); }
-});
-
-app.post("/admin/eleve", requireAdmin, async (req, res) => {
-  const { nom, prenom, password, classe_id } = req.body;
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    const code = "S&H-" + crypto.randomInt(1000, 10000);
-    await pool.query("INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id) VALUES ($1,$2,$3,$4,'ELEVE',$5)", [String(nom).trim(), String(prenom).trim(), code, hash, Number(classe_id)]);
-    res.redirect("/admin/eleves");
-  } catch (e) { res.status(500).send("Erreur élève."); }
-});
-
-app.post("/admin/eleve/supprimer", requireAdmin, async (req, res) => {
-  const { id } = req.body;
-  try {
-    await pool.query("DELETE FROM utilisateurs WHERE id=$1 AND role='ELEVE'", [Number(id)]);
-    res.redirect("/admin/eleves");
-  } catch (e) { res.status(500).send("Erreur suppression élève."); }
-});
-
-app.post("/admin/note", requireStaff, async (req, res) => {
-  const { eleve_id, matiere, note, total_max, type_eval, periode } = req.body;
-  try {
-    await pool.query("INSERT INTO notes (eleve_id, matiere, note, total_max, type_eval, periode) VALUES ($1,$2,$3,$4,$5,$6)", [Number(eleve_id), String(matiere).trim(), Number(note), Number(total_max) || 100, String(type_eval), String(periode).trim()]);
-    res.redirect(req.session.user.role === "PROF" ? "/prof" : "/admin/notes");
-  } catch (e) { res.status(500).send("Erreur note."); }
-});
-
-
-// MESSAGERIE INTERNE — seuls les utilisateurs connectés peuvent lire leurs messages
-app.get("/messages", async (req, res) => {
-  if (!req.session.user) return res.redirect("/connexion");
-  const current = req.session.user;
-  try {
-    await pool.query("UPDATE messages SET lu_at=NOW() WHERE receiver_id=$1 AND lu_at IS NULL", [current.id]);
-    const recipients = rolesStaff.includes(current.role)
-      ? await pool.query("SELECT id, nom, prenom, role FROM utilisateurs WHERE id<>$1 ORDER BY nom, prenom", [current.id])
-      : await pool.query("SELECT id, nom, prenom, role FROM utilisateurs WHERE role = ANY($1::text[]) AND id<>$2 ORDER BY nom, prenom", [rolesStaff, current.id]);
-    const inbox = await pool.query(`
-      SELECT m.id, m.sujet, m.contenu, m.created_at, m.lu_at,
-             u.nom AS autre_nom, u.prenom AS autre_prenom, u.role AS autre_role
-      FROM messages m JOIN utilisateurs u ON u.id=m.sender_id
-      WHERE m.receiver_id=$1 ORDER BY m.created_at DESC LIMIT 100
-    `, [current.id]);
-    const sent = await pool.query(`
-      SELECT m.id, m.sujet, m.contenu, m.created_at,
-             u.nom AS autre_nom, u.prenom AS autre_prenom, u.role AS autre_role
-      FROM messages m JOIN utilisateurs u ON u.id=m.receiver_id
-      WHERE m.sender_id=$1 ORDER BY m.created_at DESC LIMIT 100
-    `, [current.id]);
-    const recipientOptions = recipients.rows.map(u =>
-      `<option value="${u.id}">${h(u.prenom)} ${h(u.nom)} — ${h(u.role)}</option>`
-    ).join("");
-    const inboxHtml = inbox.rows.map(m => `
-      <article class="devoir-card">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <strong>${h(m.sujet)}</strong><span class="excel-badge">${h(m.autre_role)}</span>
-        </div>
-        <p style="color:var(--lk-muted);font-size:.82rem">De : ${h(m.autre_prenom)} ${h(m.autre_nom)} · ${dateFr(m.created_at)}</p>
-        <p style="white-space:pre-wrap">${h(m.contenu)}</p>
-      </article>`).join("") || "<p>Aucun message reçu pour le moment.</p>";
-    const sentHtml = sent.rows.map(m => `
-      <article class="devoir-card">
-        <strong>${h(m.sujet)}</strong>
-        <p style="color:var(--lk-muted);font-size:.82rem">À : ${h(m.autre_prenom)} ${h(m.autre_nom)} (${h(m.autre_role)}) · ${dateFr(m.created_at)}</p>
-        <p style="white-space:pre-wrap">${h(m.contenu)}</p>
-      </article>`).join("") || "<p>Aucun message envoyé.</p>";
-    const content = `
-      <section class="card"><h1>✉️ Messagerie LEKOL S&amp;H</h1>
-        <p style="color:var(--lk-muted)">Échangez avec la direction, les professeurs et les membres autorisés de l'école.</p>
-      </section>
-      <section class="card"><h2>✍️ Nouveau message</h2>
-        <form method="post" action="/messages/envoyer">${csrfField(req)}
-          <label>Destinataire</label>
-          <select name="receiver_id" required><option value="">Choisir un destinataire</option>${recipientOptions}</select>
-          <label>Objet</label><input name="sujet" maxlength="180" required placeholder="Objet du message">
-          <label>Message</label><textarea name="contenu" rows="5" maxlength="5000" required placeholder="Écrivez votre message..."></textarea>
-          <button class="btn" type="submit">Envoyer le message</button>
-        </form>
-      </section>
-      <section class="card"><h2>📥 Messages reçus</h2>${inboxHtml}</section>
-      <section class="card"><h2>📤 Messages envoyés</h2>${sentHtml}</section>`;
-    res.send(layout("Messagerie", content, req));
-  } catch (e) {
-    console.error("Erreur messagerie:", e.message);
-    res.status(500).send(layout("Messagerie", "<section class='card'><h2>Messagerie indisponible</h2><p>Vérifiez la base de données et réessayez.</p></section>", req));
-  }
-});
-
-app.post("/messages/envoyer", async (req, res) => {
-  if (!req.session.user) return res.redirect("/connexion");
-  const sender = req.session.user;
-  const receiverId = Number(req.body.receiver_id);
-  const sujet = String(req.body.sujet || "").trim();
-  const contenu = String(req.body.contenu || "").trim();
-  if (!Number.isInteger(receiverId) || receiverId <= 0 || !sujet || !contenu ||
-      sujet.length > 180 || contenu.length > 5000) {
-    return res.status(400).send(layout("Message invalide",
-      "<section class='card'><h2>Message non envoyé</h2><p>Vérifiez le destinataire, l'objet et le contenu (maximum 5 000 caractères).</p><a class='btn' href='/messages'>Retour à la messagerie</a></section>", req));
-  }
-  try {
-    const target = await pool.query("SELECT id, role FROM utilisateurs WHERE id=$1", [receiverId]);
-    if (!target.rows[0] || receiverId === Number(sender.id)) return res.status(400).send("Destinataire invalide.");
-    if (!rolesStaff.includes(sender.role) && !rolesStaff.includes(target.rows[0].role)) {
-      return res.status(403).send("Vous pouvez uniquement écrire au personnel de l'école.");
-    }
-    await pool.query("INSERT INTO messages (sender_id, receiver_id, sujet, contenu) VALUES ($1,$2,$3,$4)",
-      [Number(sender.id), receiverId, sujet, contenu]);
-    res.redirect("/messages");
-  } catch (e) {
-    console.error("Erreur envoi message:", e.message);
-    res.status(500).send("Impossible d'envoyer le message pour le moment.");
-  }
-});
-
-// ROUTE GALERIE SCOLAIRE
-app.get("/galerie", async (req, res) => {
-  try {
-    const photos = await pool.query("SELECT id, titre, photo_base64, TO_CHAR(date_ajout, 'YYYY-MM-DD') as date_fmt FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
-    const isAdmin = req.session.user && rolesAdmin.includes(req.session.user.role);
-
-    const photosHtml = photos.rows.map(p => `
-      <div class="gallery-card">
-        <img src="${h(p.photo_base64)}" class="gallery-img" alt="${h(p.titre)}" onerror="this.src='https://via.placeholder.com/300?text=Image+Indisponible'">
-        <div class="gallery-body">
-          <strong style="color:var(--lk-navy);display:block">${h(p.titre)}</strong>
-          <span style="font-size:.75rem;color:var(--lk-muted)">Publié le ${dateFr(p.date_fmt)}</span>
-          ${isAdmin ? `
-            <form method="post" action="/admin/galerie/supprimer" style="margin-top:8px">
-              ${csrfField(req)}
-              <input type="hidden" name="id" value="${p.id}">
-              <button class="btn danger" onclick="return confirm('Supprimer cette photo ?')">🗑️ Supprimer</button>
-            </form>` : ''}
-        </div>
-      </div>
-    `).join("") || "<p style='color:var(--lk-muted);grid-column:1/-1;text-align:center;padding:20px'>Aucune photo dans la galerie pour le moment.</p>";
-
-    let uploadFormHtml = "";
-    if (isAdmin) {
-      uploadFormHtml = `
-        <section class="card" style="border:2px dashed var(--lk-blue);background:#eff6ff;margin-bottom:20px">
-          <h2 style="margin-bottom:10px">📸 Ajouter une Photo à la Galerie</h2>
-          <form method="post" action="/admin/galerie">
-            ${csrfField(req)}
-            <label>Titre de l'événement / photo</label>
-            <input name="titre" required placeholder="Ex. Fête du Drapeau 2026">
-            
-            <label>Sélectionner la photo :</label>
-            <input type="file" id="galerieInput" accept="image/*" style="display:none">
-            <input type="hidden" name="photo_base64" id="galerieBase64">
-            
-            <button type="button" class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('galerieInput').click()">📁 Choisir une image</button>
-            <button type="submit" id="saveGalerieBtn" class="btn full" style="margin-top:10px;display:none;background:#22c55e">✅ Publier dans la Galerie</button>
-          </form>
-        </section>
-
-        <script>
-          document.getElementById('galerieInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = function(event) {
-                document.getElementById('galerieBase64').value = event.target.result;
-                document.getElementById('saveGalerieBtn').style.display = 'block';
-              };
-              reader.readAsDataURL(file);
-            }
-          });
-        </script>`;
-    }
-
-    const content = `
-      <div class="card">
-        <h2>📸 Galerie Scolaire — LEKOL S&amp;H</h2>
-        <p style="color:var(--lk-muted)">Retrouvez en images les événements et activités de l'établissement.</p>
-      </div>
-      
-      ${uploadFormHtml}
-
-      <div class="gallery-grid">
-        ${photosHtml}
-      </div>`;
-
-    res.send(layout("Galerie Scolaire", content, req));
-  } catch (e) { res.status(500).send("Erreur galerie."); }
-});
-
-app.post("/admin/galerie", requireAdmin, async (req, res) => {
-  const { titre, photo_base64 } = req.body;
-  try {
-    if (photo_base64) {
-      await pool.query("INSERT INTO galerie (titre, photo_base64) VALUES ($1, $2)", [String(titre).trim(), photo_base64]);
-    }
-    res.redirect("/galerie");
-  } catch (e) { res.status(500).send("Erreur publication photo."); }
-});
-
-app.post("/admin/galerie/supprimer", requireAdmin, async (req, res) => {
-  const { id } = req.body;
-  try {
-    await pool.query("DELETE FROM galerie WHERE id=$1", [Number(id)]);
-    res.redirect("/galerie");
-  } catch (e) { res.status(500).send("Erreur suppression photo."); }
-});
-
-// ESPACE PARENT
-app.get("/espace-parent", (req, res) => {
-  if (!req.session.user) return res.redirect("/connexion");
-  if (req.session.user.role !== "PARENT") return res.redirect(getHomeByRole(req.session.user.role));
-  const content = `
-    <section class="card">
-      <h1>👪 Espace Parent</h1>
-      <p>Votre compte est connecté, mais il n'est pas encore associé à un dossier élève dans la base de données.</p>
-      <p>Demandez à la direction de confirmer l'association de votre compte au dossier de votre enfant avant d'afficher ses notes et présences.</p>
-      <a class="btn" href="/messages">✉️ Contacter l'école</a>
-    </section>`;
-  res.send(layout("Espace Parent", content, req));
-});
-
-// RELEVÉ DE NOTES IMPRIMABLE[span_1](start_span)[span_1](end_span)
-app.get("/bulletin", async (req, res) => {
-  if (!req.session.user) return res.redirect("/connexion");
-  const current = req.session.user;
-  let studentId = Number(req.query.eleve_id || 0);
-  if (current.role === "ELEVE") studentId = Number(current.id);
-  else if (!rolesStaff.includes(current.role)) {
-    return res.status(403).send(layout("Accès refusé",
-      "<section class='card'><h2>Accès non disponible</h2><p>Le compte parent doit être associé à un élève avant de pouvoir consulter son bulletin.</p></section>", req));
-  }
-  try {
-    if (rolesStaff.includes(current.role) && !studentId) {
-      const students = await pool.query("SELECT id, nom, prenom, code_eleve FROM utilisateurs WHERE role='ELEVE' ORDER BY nom, prenom");
-      const options = students.rows.map(s => `<option value="${s.id}">${h(s.prenom)} ${h(s.nom)} — ${h(s.code_eleve || "")}</option>`).join("");
-      const content = `<section class="card"><h1>📊 Relevés de notes</h1>
-        <form method="get" action="/bulletin"><label>Choisir un élève</label>
-          <select name="eleve_id" required><option value="">Sélectionner...</option>${options}</select>
-          <button class="btn" type="submit">Afficher le relevé</button></form></section>`;
-      return res.send(layout("Relevés de notes", content, req));
-    }
-    const studentResult = await pool.query(`
-      SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe
-      FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id
-      WHERE u.id=$1 AND u.role='ELEVE'
-    `, [studentId]);
-    const student = studentResult.rows[0];
-    if (!student) return res.status(404).send(layout("Élève introuvable",
-      "<section class='card'><h2>Élève introuvable</h2><a class='btn' href='/bulletin'>Retour</a></section>", req));
-    const notesResult = await pool.query(`
-      SELECT matiere, note, COALESCE(total_max,100) AS total_max,
-             COALESCE(type_eval,'Contrôle') AS type_eval, periode, date_saisie
-      FROM notes WHERE eleve_id=$1 ORDER BY date_saisie ASC
-    `, [studentId]).catch(() => ({ rows: [] }));
-    const notes = notesResult.rows;
-    const percentages = notes.map(n => {
-      const max = Number(n.total_max) || 100;
-      return max > 0 ? (Number(n.note) / max) * 100 : null;
-    }).filter(v => Number.isFinite(v));
-    const average = percentages.length
-      ? (percentages.reduce((a,b) => a+b, 0) / percentages.length).toFixed(2) : null;
-    const rows = notes.map(n => {
-      const max = Number(n.total_max) || 100;
-      const score = Number(n.note);
-      const pct = max > 0 ? ((score / max) * 100).toFixed(2) + "%" : "—";
-      return `<tr><td>${h(n.matiere)}</td><td>${h(n.type_eval)}</td>
-        <td>${Number.isFinite(score) ? score : "—"}</td><td>${max}</td>
-        <td>${pct}</td><td>${h(n.periode || "—")}</td></tr>`;
-    }).join("") || "<tr><td colspan='6'>Aucune note enregistrée.</td></tr>";
-    const content = `
-      <section class="card">
-        <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-          <a href="/bulletin" class="btn secondary">← Retour</a>
-          <button class="btn" type="button" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
-        </div>
-        <div style="text-align:center;border-bottom:2px solid var(--lk-gold);padding:10px 0 18px;margin-bottom:18px">
-          <h1 style="margin:0;color:var(--lk-navy)">LEKOL S&amp;H</h1>
-          <p style="margin:4px 0;color:var(--lk-muted)">Relevé de notes — aperçu imprimable</p>
-        </div>
-        <h2>Informations de l'élève</h2>
-        <p><strong>Nom :</strong> ${h(student.prenom)} ${h(student.nom)}</p>
-        <p><strong>Code élève :</strong> ${h(student.code_eleve || "—")}</p>
-        <p><strong>Classe :</strong> ${h(student.nom_classe || "Non assignée")}</p>
-        <div class="excel-table-container"><table class="excel-table">
-          <thead><tr><th>Matière</th><th>Évaluation</th><th>Note</th><th>Sur</th><th>Pourcentage</th><th>Période</th></tr></thead>
-          <tbody>${rows}</tbody></table></div>
-        <div style="margin-top:18px;padding:15px;background:#f8fafc;border-radius:12px">
-          <strong>Moyenne simple des évaluations normalisée sur 100 :</strong>
-          <span style="font-size:1.25rem;color:var(--lk-blue);font-weight:800">${average === null ? "Non disponible" : average + "%"}</span>
-          <p style="font-size:.8rem;color:var(--lk-muted);margin-bottom:0">Aperçu calculé à partir des notes enregistrées. Il ne remplace pas un bulletin officiel validé par la direction.</p>
-        </div>
-      </section>`;
-    res.send(layout("Relevé de notes", content, req));
-  } catch (e) {
-    console.error("Erreur relevé de notes:", e.message);
-    res.status(500).send(layout("Erreur", "<section class='card'><h2>Impossible d'afficher le relevé de notes.</h2></section>", req));
-  }
-});
-
-app.get("/espace-eleve", requireStudent, async (req, res) => {
-  const id = req.session.user.id;
-  try {
-    const student = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [id])).rows[0];
-    const notes = await pool.query("SELECT matiere, note, COALESCE(total_max, 100) as total_max, COALESCE(type_eval, 'Contrôle') as type_eval, periode FROM notes WHERE eleve_id=$1 ORDER BY date_saisie DESC", [id]).catch(() => ({ rows: [] }));
-    const presences = await pool.query("SELECT statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
-
-    const absCount = presences.rows.filter(p => p.statut === "ABSENT").length;
-    const retCount = presences.rows.filter(p => p.statut === "RETARD").length;
-    const photoUrl = student.photo_url || "https://via.placeholder.com/100";
-
-    const content = `
-      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-        <a class="btn" href="/bulletin">📊 Consulter mon bulletin</a>
-        <a class="btn secondary" href="/messages">✉️ Mes messages</a>
-      </div>
-      <div class="student-badge-card">
-        <div class="badge-header">
-          <div class="badge-school">🎓 LEKOL S&amp;H</div>
-          <span style="font-size:.7rem;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-weight:700">CARTE ÉLÈVE</span>
-        </div>
-        <div class="badge-body">
-          <img src="${h(photoUrl)}" class="badge-photo" alt="Photo de profil">
-          <div class="badge-info">
-            <div class="badge-name">${h(student.prenom)} ${h(student.nom)}</div>
-            <div style="font-size:.82rem;opacity:.9;margin-top:2px">Classe : <b>${h(student.nom_classe || "Non assignée")}</b></div>
-            <div class="badge-code">${h(student.code_eleve)}</div>
-          </div>
-        </div>
-        <div class="badge-footer">
-          <span>Année Académique 2026-2027</span>
-          <span style="font-weight:800;color:var(--lk-gold)">VALIDÉ ✓</span>
-        </div>
-      </div>
-
-      <section class="card" style="text-align:center">
-        <form method="post" action="/espace-eleve/photo">
-          ${csrfField(req)}
-          <label style="margin-top:0;font-size:.9rem">📷 Changer la Photo d'Identité du Badge :</label>
-          <input type="file" id="photoInput" accept="image/*" style="display:none">
-          <input type="hidden" name="photo_base64" id="photoBase64">
-          <div style="display:flex;gap:10px;margin-top:10px;justify-content:center">
-            <button type="button" class="btn secondary" onclick="document.getElementById('photoInput').click()">📸 Prendre Photo / Galerie</button>
-            <button type="submit" id="savePhotoBtn" class="btn" style="display:none;background:#22c55e">✅ Enregistrer</button>
-          </div>
-        </form>
-      </section>
-
-      <script>
-        document.getElementById('photoInput').addEventListener('change', function(e) {
-          const file = e.target.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-              document.getElementById('photoBase64').value = event.target.result;
-              document.getElementById('savePhotoBtn').style.display = 'inline-flex';
-            };
-            reader.readAsDataURL(file);
-          }
-        });
-      </script>
-
-      <div class="tile-grid">
-        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#dc2626">${absCount}</div><div class="tile-desc">Absences</div></div>
-        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:var(--lk-gold)">${retCount}</div><div class="tile-desc">Retards</div></div>
-        <div class="tile" style="align-items:center;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:var(--lk-blue)">${notes.rows.length}</div><div class="tile-desc">Devoirs &amp; Notes</div></div>
-      </div>
-
-      <section class="card">
-        <h2>📊 Notes &amp; Évaluations</h2>
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead>
-              <tr><th>Matière</th><th>Type</th><th>Note Obtenue</th><th>Période</th></tr>
-            </thead>
-            <tbody>
-              ${notes.rows.map(n => `
-                <tr>
-                  <td><b>${h(n.matiere)}</b></td>
-                  <td><span class="excel-badge">${h(n.type_eval)}</span></td>
-                  <td><strong style="color:var(--lk-blue)">${h(n.note)}</strong> / ${h(n.total_max)}</td>
-                  <td>${h(n.periode)}</td>
-                </tr>
-              `).join("") || "<tr><td colspan='4' style='text-align:center;padding:15px'>Aucune note disponible.</td></tr>"}
-            </tbody>
-          </table>
-        </div>
-      </section>`;
-
-    res.send(layout("Dossier Élève", content, req));
-  } catch (e) { res.status(500).send("Erreur espace élève."); }
-});
-
-app.post("/espace-eleve/photo", requireStudent, async (req, res) => {
-  const { photo_base64 } = req.body;
-  const id = req.session.user.id;
-  try {
-    if (photo_base64) {
-      await pool.query("UPDATE utilisateurs SET photo_url=$1 WHERE id=$2", [photo_base64, id]);
-      req.session.user.photo_url = photo_base64;
-    }
-    res.redirect("/espace-eleve");
-  } catch (e) { res.status(500).send("Erreur mise à jour photo."); }
-});
-
-// HORAIRE ET EMPLOI DU TEMPS
-app.get("/horaire", async (req, res) => {
-  try {
-    const isAuth = !!req.session.user;
-    const userRole = isAuth ? req.session.user.role : null;
-    const isAdmin = rolesAdmin.includes(userRole);
-    const isEleve = userRole === "ELEVE";
-
-    if (!isAuth) {
-      const content = `
-        <section class="card" style="text-align:center;padding:40px 20px;">
-          <h2>🔒 Espace Sécurisé</h2>
-          <p style="color:var(--lk-muted);margin:10px 0 20px">Veuillez vous connecter pour consulter l'emploi du temps des classes.</p>
-          <a href="/connexion" class="btn" style="padding:12px 24px;">🔑 Se Connecter</a>
-        </section>`;
-      return res.send(layout("Connexion Requise", content, req));
-    }
-
-    const classes = await pool.query("SELECT id, nom FROM classes ORDER BY id ASC");
-    if (classes.rows.length === 0) {
-      return res.send(layout("Horaire", "<section class='card'><h2>Aucune classe configurée</h2><p>Veuillez d'abord créer des classes dans l'administration.</p></section>", req));
-    }
-
-    let selectedClasseId;
-    if (isEleve) {
-      selectedClasseId = req.session.user.classe_id;
-    } else if (isAdmin && req.query.classe_id) {
-      selectedClasseId = Number(req.query.classe_id);
-    } else {
-      selectedClasseId = req.query.classe_id ? Number(req.query.classe_id) : (req.session.user.classe_id || classes.rows[0].id);
-    }
-
-    const [selectedClasse, horaires] = await Promise.all([
-      pool.query("SELECT nom FROM classes WHERE id=$1", [selectedClasseId]),
-      pool.query("SELECT * FROM horaires WHERE classe_id=$1 ORDER BY id ASC", [selectedClasseId])
-    ]);
-
-    const classeNom = selectedClasse.rows[0]?.nom || "Classe";
-
-    let classSelectHtml = "";
-    if (isAdmin) {
-      const classOptionsHtml = classes.rows.map(c => `
-        <option value="${c.id}" ${c.id === selectedClasseId ? "selected" : ""}>${h(c.nom)}</option>
-      `).join("");
-
-      classSelectHtml = `
-        <div style="min-width:200px">
-          <label style="margin-top:0">Changer de classe :</label>
-          <select onchange="window.location.href='/horaire?classe_id=' + this.value">
-            ${classOptionsHtml}
-          </select>
-        </div>`;
-    }
-
-    const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
-    let joursHtml = jours.map(j => {
-      const coursJour = horaires.rows.filter(h => h.jour.toLowerCase() === j.toLowerCase());
-      return `
-        <div style="margin-bottom:20px">
-          <div style="background:var(--lk-blue);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;font-weight:800;display:flex;justify-content:space-between;align-items:center">
-            <span>${j}</span>
-            <span style="font-size:.8rem;font-weight:600;opacity:.9">${coursJour.length} cours</span>
-          </div>
-          <div class="excel-table-container">
-            <table class="excel-table" style="margin-top:0">
-              <thead>
-                <tr>
-                  <th>Heure</th>
-                  <th>Matière</th>
-                  <th>Professeur</th>
-                  <th>Coeff</th>
-                  ${isAdmin ? "<th>Action</th>" : ""}
-                </tr>
-              </thead>
-              <tbody>
-                ${coursJour.map(c => `
-                  <tr>
-                    <td><b>${h(c.heure_debut)} – ${h(c.heure_fin)}</b></td>
-                    <td><b>${h(c.matiere)}</b></td>
-                    <td>${h(c.professeur)}</td>
-                    <td><span class="excel-badge">Coeff. ${h(c.coeff)}</span></td>
-                    ${isAdmin ? `
-                      <td>
-                        <form method="post" action="/admin/horaire/supprimer" style="display:inline">
-                          ${csrfField(req)}
-                          <input type="hidden" name="id" value="${c.id}">
-                          <input type="hidden" name="classe_id" value="${selectedClasseId}">
-                          <button type="submit" class="btn danger" onclick="return confirm('Supprimer ce créneau ?')">🗑️ Supprimer</button>
-                        </form>
-                      </td>` : ""}
-                  </tr>
-                `).join("") || "<tr><td colspan='" + (isAdmin ? "5" : "4") + "' style='text-align:center;color:var(--lk-muted);padding:15px'>Pas de cours planifié pour le " + j + ".</td></tr>"}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
-    }).join("");
-
-    let adminFormHtml = "";
-    if (isAdmin) {
-      adminFormHtml = `
-        <section class="card" style="border:2px dashed var(--lk-blue);background:#eff6ff">
-          <h3 style="color:var(--lk-navy);margin-bottom:10px">➕ Ajouter un créneau d'horaire pour : <span style="color:var(--lk-blue)">${h(classeNom)}</span></h3>
-          <form method="post" action="/admin/horaire/ajouter">${csrfField(req)}
-            <input type="hidden" name="classe_id" value="${selectedClasseId}">
-            
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px">
-              <div>
-                <label>Jour</label>
-                <select name="jour" required>
-                  <option value="Lundi">Lundi</option>
-                  <option value="Mardi">Mardi</option>
-                  <option value="Mercredi">Mercredi</option>
-                  <option value="Jeudi">Jeudi</option>
-                  <option value="Vendredi">Vendredi</option>
-                </select>
-              </div>
-              <div><label>Heure Début</label><input name="heure_debut" required placeholder="08:00"></div>
-              <div><label>Heure Fin</label><input name="heure_fin" required placeholder="09:00"></div>
-              <div><label>Matière</label><input name="matiere" required placeholder="Français, Math..."></div>
-              <div><label>Professeur</label><input name="professeur" required placeholder="M. Béliard"></div>
-              <div><label>Coefficient</label><input type="number" name="coeff" value="1" min="1" required></div>
-            </div>
-
-            <button type="submit" class="btn full" style="margin-top:15px">✅ Enregistrer ce créneau</button>
-          </form>
-        </section>`;
-    }
-
-    const content = `
-      <section class="card">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px">
-          <div>
-            <h2>📅 Horaire &amp; Emploi du Temps</h2>
-            <p style="color:var(--lk-muted)">Emploi du temps officiel : <b style="color:var(--lk-blue)">${h(classeNom)}</b></p>
-          </div>
-          ${classSelectHtml}
-        </div>
-
-        ${adminFormHtml}
-
-        <div style="margin-top:20px">
-          ${joursHtml}
-        </div>
-      </section>`;
-
-    res.send(layout(`Horaire - ${classeNom}`, content, req));
-  } catch (e) { res.status(500).send("Erreur horaire."); }
-});
-
-app.post("/admin/horaire/ajouter", requireAdmin, async (req, res) => {
-  const { classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff } = req.body;
-  try {
-    await pool.query(
-      "INSERT INTO horaires (classe_id, jour, heure_debut, heure_fin, matiere, professeur, coeff) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [Number(classe_id), String(jour).trim(), String(heure_debut).trim(), String(heure_fin).trim(), String(matiere).trim(), String(professeur).trim(), Number(coeff) || 1]
-    );
-    res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) { res.status(500).send("Erreur ajout horaire."); }
-});
-
-app.post("/admin/horaire/supprimer", requireAdmin, async (req, res) => {
-  const { id, classe_id } = req.body;
-  try {
-    await pool.query("DELETE FROM horaires WHERE id=$1", [Number(id)]);
-    res.redirect(`/horaire?classe_id=${classe_id}`);
-  } catch (e) { res.status(500).send("Erreur suppression horaire."); }
-});
-
-// CONNEXION
+// CONNEXION & DÉCONNEXION
 app.get("/connexion", (req, res) => {
   if (req.session.user) return res.redirect(getHomeByRole(req.session.user.role));
-  const content = `
-    <section class="card" style="max-width:380px;margin:20px auto">
-      <h2>🔑 Connexion</h2>
-      <p style="color:var(--lk-muted);font-size:.85rem;margin-bottom:15px">Entrez votre code (ex: S&amp;H-XXXX), e-mail ou identifiant.</p>
-      <form method="post" action="/connexion">${csrfField(req)}
-        <label>Identifiant / Code / E-mail</label>
-        <input name="identifiant" required placeholder="Ex. S&amp;H-1234 ou admin">
-        <label>Mot de passe</label>
-        <input type="password" name="password" required placeholder="••••••••">
-        <button class="btn full" style="margin-top:15px">Se connecter</button>
-      </form>
-    </section>`;
-  res.send(layout("Connexion", content, req));
+  res.send(layout("Connexion", `<section class="card" style="max-width:380px;margin:20px auto"><h2>🔑 Connexion</h2><form method="post" action="/connexion">${csrfField(req)}<label>Identifiant / Code</label><input name="identifiant" required><label>Mot de passe</label><input type="password" name="password" required><button class="btn full" style="margin-top:15px">Se connecter</button></form></section>`, req));
 });
 
 app.post("/connexion", loginLimiter, async (req, res) => {
   const { identifiant, password } = req.body;
   try {
-    const identClean = String(identifiant || "").trim();
-    const queryText = `
-      SELECT * FROM utilisateurs 
-      WHERE lower(email) = lower($1) 
-         OR code_eleve = $1 
-         OR lower(nom) = lower($1)
-      LIMIT 1
-    `;
-    const { rows } = await pool.query(queryText, [identClean]);
-    const user = rows[0];
-
+    const user = (await pool.query("SELECT * FROM utilisateurs WHERE lower(email) = lower($1) OR code_eleve = $1 OR lower(nom) = lower($1) LIMIT 1", [String(identifiant || "").trim()])).rows[0];
     if (!user || !(await bcrypt.compare(password, user.mot_de_passe).catch(() => user.mot_de_passe === password))) {
-      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><p style='color:var(--lk-muted);margin:10px 0'>Vérifiez vos accès.</p><a class='btn' href='/connexion'>Réessayer</a></section>", req));
+      return res.status(401).send(layout("Erreur", "<section class='card'><h2>Identifiants incorrects</h2><a class='btn' href='/connexion'>Réessayer</a></section>", req));
     }
-
     req.session.user = { id: user.id, nom: user.nom, prenom: user.prenom, role: user.role, classe_id: user.classe_id, photo_url: user.photo_url };
     res.redirect(getHomeByRole(user.role));
   } catch (e) { res.status(500).send("Erreur connexion."); }
@@ -2198,99 +811,18 @@ app.get("/deconnexion", (req, res) => {
   req.session.destroy(() => { res.clearCookie("lekolsid"); res.redirect("/"); });
 });
 
-// CALENDRIER AVEC PROGRAMME ANNUEL 2026-2027 & NAVIGATION LIBRE
-app.get("/calendrier", async (req, res) => {
+// GALERIE SCOLAIRE
+app.get("/galerie", async (req, res) => {
   try {
-    const isAuth = !!req.session.user;
-    const id = isAuth ? req.session.user.id : null;
+    const photos = await pool.query("SELECT id, titre, photo_base64 FROM galerie ORDER BY id DESC").catch(() => ({ rows: [] }));
+    const photosHtml = photos.rows.map(p => `<div class="gallery-card"><img src="${h(p.photo_base64)}" style="width:100%;height:180px;object-fit:contain"><div style="padding:14px"><strong>${h(p.titre)}</strong></div></div>`).join("") || "<p>Aucune photo.</p>";
+    res.send(layout("Galerie", `<div class="card"><h2>📸 Galerie Scolaire</h2></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">${photosHtml}</div>`, req));
+  } catch (e) { res.status(500).send("Erreur galerie."); }
+});
 
-    let presenceMap = {};
-    if (id) {
-      const presences = await pool.query("SELECT date_presence::text, statut FROM presences WHERE eleve_id=$1", [id]).catch(() => ({ rows: [] }));
-      presences.rows.forEach(p => { presenceMap[p.date_presence.split("T")[0]] = p.statut; });
-    }
-
-    const todayHaitiStr = getTodayDate();
-    const todayParts = todayHaitiStr.split("-");
-    
-    let year = req.query.year ? parseInt(req.query.year) : parseInt(todayParts[0]);
-    let month = req.query.month !== undefined ? parseInt(req.query.month) : (parseInt(todayParts[1]) - 1);
-
-    const targetDate = new Date(year, month, 1);
-    const monthName = targetDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-
-    const firstDayIndex = targetDate.getDay();
-    const startOffset = (firstDayIndex === 0 ? 6 : firstDayIndex - 1); 
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    let calendarCellsHtml = "";
-    for (let i = 0; i < startOffset; i++) { 
-      calendarCellsHtml += `<div class="calendar-cell empty"></div>`; 
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dayFormatted = String(day).padStart(2, '0');
-      const monthFormatted = String(month + 1).padStart(2, '0');
-      const fullDateStr = `${year}-${monthFormatted}-${dayFormatted}`;
-      const statut = presenceMap[fullDateStr];
-      let cellClass = "";
-      if (statut === "PRESENT") cellClass = "present";
-      else if (statut === "ABSENT") cellClass = "absent";
-      else if (statut === "RETARD") cellClass = "retard";
-
-      calendarCellsHtml += `<div class="calendar-cell ${cellClass}">${day}</div>`;
-    }
-
-    const keyMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const activitesMois = planScolaire2026[keyMonth] || [];
-
-    let eventsHtml = activitesMois.map(act => `
-      <div style="border-left:4px solid var(--lk-gold);padding:10px 14px;background:#fff8e6;border-radius:0 8px 8px 0;margin-bottom:10px">
-        <strong style="color:var(--lk-navy);font-size:.95rem;display:block">📌 ${h(act.titre)}</strong>
-        <p style="font-size:.85rem;color:#475569;margin-top:2px">${h(act.desc)}</p>
-      </div>
-    `).join("") || "<p style='color:var(--lk-muted);font-size:.88rem'>Aucun événement particulier planifié pour ce mois.</p>";
-
-    const prevMonth = month === 0 ? 11 : month - 1;
-    const prevYear = month === 0 ? year - 1 : year;
-    const nextMonth = month === 11 ? 0 : month + 1;
-    const nextYear = month === 11 ? year + 1 : year;
-
-    const content = `
-      <section class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px">
-          <h2>🗓️ Calendrier &amp; Programme Scolaire — <span style="text-transform:capitalize;color:var(--lk-blue)">${monthName}</span></h2>
-          <div style="display:flex;gap:8px">
-            <a href="/calendrier?year=${prevYear}&month=${prevMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">◀ Mois Précédent</a>
-            <a href="/calendrier?year=${nextYear}&month=${nextMonth}" class="btn secondary" style="padding:6px 12px;font-size:.85rem">Mois Suivant ▶</a>
-          </div>
-        </div>
-
-        <div class="calendar-grid">
-          <div class="calendar-day-head">Lun</div>
-          <div class="calendar-day-head">Mar</div>
-          <div class="calendar-day-head">Mer</div>
-          <div class="calendar-day-head">Jeu</div>
-          <div class="calendar-day-head">Ven</div>
-          <div class="calendar-day-head">Sam</div>
-          <div class="calendar-day-head">Dim</div>
-          ${calendarCellsHtml}
-        </div>
-
-        <div class="legend-box" style="margin-top:20px;display:flex;gap:15px;flex-wrap:wrap;border-bottom:1px solid var(--lk-line);padding-bottom:15px">
-          <div class="legend-item"><span class="legend-dot" style="background:#22c55e;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Vert</b> = Présent</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#ef4444;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Rouge</b> = Absent</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#64748b;width:12px;height:12px;display:inline-block;border-radius:3px"></span> <b>Gris</b> = Retard</div>
-        </div>
-
-        <div style="margin-top:20px">
-          <h3 style="color:var(--lk-navy);margin-bottom:12px">📅 Activités &amp; Jalons du Mois (${monthName})</h3>
-          ${eventsHtml}
-        </div>
-      </section>`;
-
-    res.send(layout("Calendrier de Présence", content, req));
-  } catch (e) { res.status(500).send("Erreur calendrier."); }
+// CALENDRIER
+app.get("/calendrier", (req, res) => {
+  res.send(layout("Calendrier", `<section class="card"><h2>🗓️ Calendrier &amp; Programme Scolaire</h2><p>Consultez les dates clés et événements de LEKOL S&amp;H.</p></section>`, req));
 });
 
 app.use((req, res) => res.status(404).send("Page introuvable."));
