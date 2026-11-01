@@ -85,73 +85,64 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// PLAN ANNUEL SCOLAIRE OFFICIEL 2026-2027 (LEKOL S&H)
-const planScolaire2026 = {
-  "2026-08": [
-    { titre: "Inventaire & Acquisition", desc: "Achat et inventaire du matériel pour l'école primaire et le collège" },
-    { titre: "Traitement des dossiers & entretiens", desc: "Rencontre et entretiens avec les nouveaux enseignants" },
-    { titre: "Séminaire d'orientation professionnelle", desc: "Orientation de la Promotion 2026-2027" }
-  ],
-  "2026-09": [
-    { titre: "Cours spécial de préparation", desc: "Cours de mise à niveau avant la grande ouverture" },
-    { titre: "Réunion des parents", desc: "Lancement officiel de l'année scolaire" },
-    { titre: "Séminaire des enseignants", desc: "Discussion et ateliers pédagogiques" },
-    { titre: "Rentrée scolaire officielle", desc: "Vérification des uniformes et des livres" }
-  ],
-  "2026-10": [
-    { titre: "Élection du conseil des élèves", desc: "Élections scolaires pour le Collège" },
-    { titre: "Supervision officielle des enseignants", desc: "Observations en classe" },
-    { titre: "Commémoration de la mort de Dessalines", desc: "Activité culturelle et historique" },
-    { titre: "Réunion de suivi des parents", desc: "Préparation pour les examens trimestriels" }
-  ],
-  "2026-11": [
-    { titre: "1er Examen Trimestriel", desc: "Évaluations du premier trimestre" },
-    { titre: "Commémoration de Vertières", desc: "Célébration de la fête de l'Indépendance" }
-  ],
-  "2026-12": [
-    { titre: "Remise des bulletins (Primaire & Collège)", desc: "Livraison officielle des résultats aux parents" },
-    { titre: "Vacances de Noël", desc: "Début des vacances du premier trimestre" }
-  ],
-  "2027-01": [
-    { titre: "Rentrée scolaire du 2ème trimestre", desc: "Reprise des cours pour tous les élèves" }
-  ],
-  "2027-02": [
-    { titre: "2ème Examen Trimestriel", desc: "Évaluations du deuxième trimestre" },
-    { titre: "Vacances de Carnaval & Mercredi des Cendres", desc: "Période de congé de Carnaval" },
-    { titre: "Inscriptions ouvertes pour la Maternelle", desc: "Nouveaux élèves pour Kindergarten" }
-  ],
-  "2027-03": [
-    { titre: "Inscriptions sur liste d'attente", desc: "Inscriptions Primaire & Collège" },
-    { titre: "Remise des bulletins du 2ème trimestre", desc: "Distribution des résultats aux parents" },
-    { titre: "EXPOSMART (Foire Scientifique & Techno)", desc: "Exposition des projets d'élèves en sciences et technologie" },
-    { titre: "Anniversaire de l'École S&H", desc: "Célébration officielle de l'établissement" },
-    { titre: "Vacances de Pâques", desc: "Congé de Pâques" }
-  ],
-  "2027-04": [
-    { titre: "Examen d'entrée Maternelle", desc: "Tests d'admission" },
-    { titre: "3ème Examen Trimestriel", desc: "Évaluations du troisième trimestre" }
-  ],
-  "2027-05": [
-    { titre: "Remise des bulletins du 3ème trimestre", desc: "Remise des résultats" },
-    { titre: "Fête du Drapeau", desc: "Défilé dans les rues avec les écoles du village" },
-    { titre: "Pique-nique des enseignants & élèves", desc: "Journée récréative de détente" }
-  ],
-  "2027-06": [
-    { titre: "4ème Examen Trimestriel & Examens d'État", desc: "Fin de l'année académique et examens officiels" },
-    { titre: "Graduation Promotion 2026-2027", desc: "Cérémonie officielle de remise de diplômes" }
-  ]
-};
-
-// LISTE OFFICIELLE DES ÉLÈVES DE 2ÈME ANNÉE B (FICHE DE PRÉSENCE)
-const eleves2eB = [
-  { nom: "JEAN", prenom: "Marc", code: "S&H-2B01" },
-  { nom: "PIERRE", prenom: "Sandrine", code: "S&H-2B02" },
-  { nom: "JOSEPH", prenom: "Junior", code: "S&H-2B03" },
-  { nom: "LOUIS", prenom: "Vanessa", code: "S&H-2B04" },
-  { nom: "CHARLES", prenom: "Kenley", code: "S&H-2B05" }
+// LISTES OFFICIELLES EXTRAITES DES FICHES DE PRÉSENCE (2E A et 2E B)
+const eleves2eA = [
+  { nom: "CELIMAR", prenom: "Gamaliel Gerardo", code: "S&H-2A01" },
+  { nom: "CESAR", prenom: "Esther", code: "S&H-2A02" },
+  { nom: "CHERENFANT", prenom: "Andy E.", code: "S&H-2A03" },
+  { nom: "CLERPHE", prenom: "Rod-Hansley", code: "S&H-2A04" },
+  { nom: "ELIANE", prenom: "Joyce Polo Sandrina", code: "S&H-2A05" },
+  { nom: "ETIENNE", prenom: "Djouvensa Mayard", code: "S&H-2A06" },
+  { nom: "FELIX", prenom: "Anders Franderly", code: "S&H-2A07" },
+  { nom: "FUCIEN", prenom: "Jamescar", code: "S&H-2A08" },
+  { nom: "JEAN", prenom: "Ange Thamar Kendaëlle", code: "S&H-2A09" },
+  { nom: "JEAN", prenom: "Montimer Valery", code: "S&H-2A10" },
+  { nom: "JEAN", prenom: "Ted Ashley Matéo", code: "S&H-2A11" },
+  { nom: "JOSEPH", prenom: "Joe Jacky", code: "S&H-2A12" },
+  { nom: "LAURORE", prenom: "Ruth Shama", code: "S&H-2A13" },
+  { nom: "LOUIS", prenom: "Dabentz", code: "S&H-2A14" },
+  { nom: "LOUIS", prenom: "Dardy Ezéchiel", code: "S&H-2A15" },
+  { nom: "LOUIS", prenom: "Georges Gabriella", code: "S&H-2A16" },
+  { nom: "LUCIEN", prenom: "Frantz Shynayder", code: "S&H-2A17" },
+  { nom: "ORELUS", prenom: "Aslin", code: "S&H-2A18" },
+  { nom: "PIERRE", prenom: "Jessy Hansa", code: "S&H-2A19" },
+  { nom: "PIVERGER", prenom: "Lynn Prisca", code: "S&H-2A20" },
+  { nom: "PRÉDESTIN", prenom: "Youmica", code: "S&H-2A21" },
+  { nom: "PRÉSUME", prenom: "Marckly Joe Zach", code: "S&H-2A22" },
+  { nom: "SAINT-FORT", prenom: "JacqueCevens", code: "S&H-2A23" },
+  { nom: "THIMOLÉON", prenom: "Steph", code: "S&H-2A24" },
+  { nom: "THIMOTHEE", prenom: "Kerry Ervin", code: "S&H-2A25" }
 ];
 
-// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DE LA CLASSE 2E B
+const eleves2eB = [
+  { nom: "ANTOINE", prenom: "Marx Dony H.", code: "S&H-2B01" },
+  { nom: "ARMAND", prenom: "Leyscha", code: "S&H-2B02" },
+  { nom: "BELAMOUR", prenom: "Lentz-Malaika", code: "S&H-2B03" },
+  { nom: "BIEN-AIMÉ", prenom: "Marck Jhon Kelly", code: "S&H-2B04" },
+  { nom: "BRUTUS", prenom: "Ella Amara", code: "S&H-2B05" },
+  { nom: "CALIXTE", prenom: "Ashley-Cole", code: "S&H-2B06" },
+  { nom: "CHARLES", prenom: "Ruthdjirsie", code: "S&H-2B07" },
+  { nom: "CINA", prenom: "Daphnaëlle", code: "S&H-2B08" },
+  { nom: "ELIANÉ", prenom: "Greyce Polosand", code: "S&H-2B09" },
+  { nom: "ESTIMABLE", prenom: "Hans Ashley", code: "S&H-2B10" },
+  { nom: "EUGÈNE", prenom: "Prince Weddersone", code: "S&H-2B11" },
+  { nom: "GEORGES", prenom: "Yaelle Carlidjourie C.", code: "S&H-2B12" },
+  { nom: "GERVAIS", prenom: "Vitanae", code: "S&H-2B13" },
+  { nom: "JEAN JACQUES", prenom: "Sanderline", code: "S&H-2B14" },
+  { nom: "JEAN LOUIS", prenom: "Serge Darly", code: "S&H-2B15" },
+  { nom: "JOSEPH", prenom: "Ezéchiel", code: "S&H-2B16" },
+  { nom: "LAMOUR", prenom: "Christy Laurendie", code: "S&H-2B17" },
+  { nom: "MATHURIN", prenom: "Louinie Marah St J.", code: "S&H-2B18" },
+  { nom: "MÉNARD", prenom: "Maelle Esther Lourdes", code: "S&H-2B19" },
+  { nom: "MUSCADIN", prenom: "Nathanaëlle", code: "S&H-2B20" },
+  { nom: "RENÉ", prenom: "Sephora", code: "S&H-2B21" },
+  { nom: "RÉNÉLUS", prenom: "Emmashirah", code: "S&H-2B22" },
+  { nom: "SABIN", prenom: "Bendinho Chrismaëll", code: "S&H-2B23" },
+  { nom: "SAINT PHAT", prenom: "Judney Valéry", code: "S&H-2B24" },
+  { nom: "SAINTEA", prenom: "Wedzer Junior", code: "S&H-2B25" }
+];
+
+// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DES CLASSES 2E A ET 2E B
 async function initTables() {
   try {
     await pool.query(`
@@ -239,27 +230,41 @@ async function initTables() {
       );
     `);
 
-    // S'assurer que la classe 2ème Année B existe
+    // S'assurer que les classes 2ème Année A et 2ème Année B existent
     await pool.query(`
       INSERT INTO classes (nom, niveau) 
-      VALUES ('2ème Année B', 'Fondamental')
+      VALUES ('2ème Année A', 'Fondamental'), ('2ème Année B', 'Fondamental')
       ON CONFLICT (nom) DO NOTHING
     `);
 
-    // Insérer automatiquement les élèves de 2ème Année B
-    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année B' LIMIT 1");
-    if (resClass.rows.length > 0) {
-      const classe2eBId = resClass.rows[0].id;
-      const defaultHash = await bcrypt.hash("ecole2026", 12);
+    const defaultHash = await bcrypt.hash("ecole2026", 12);
 
+    // Insertion des élèves de 2ème Année A
+    const resClass2A = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année A' LIMIT 1");
+    if (resClass2A.rows.length > 0) {
+      const id2A = resClass2A.rows[0].id;
+      for (const e of eleves2eA) {
+        await pool.query(`
+          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
+          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
+          ON CONFLICT DO NOTHING
+        `, [e.nom, e.prenom, e.code, defaultHash, id2A]);
+      }
+      console.log("✅ Élèves de la classe 2ème Année A initialisés (25 élèves).");
+    }
+
+    // Insertion des élèves de 2ème Année B
+    const resClass2B = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année B' LIMIT 1");
+    if (resClass2B.rows.length > 0) {
+      const id2B = resClass2B.rows[0].id;
       for (const e of eleves2eB) {
         await pool.query(`
           INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
           VALUES ($1, $2, $3, $4, 'ELEVE', $5)
           ON CONFLICT DO NOTHING
-        `, [e.nom, e.prenom, e.code, defaultHash, classe2eBId]);
+        `, [e.nom, e.prenom, e.code, defaultHash, id2B]);
       }
-      console.log("✅ Élèves de la classe 2ème Année B initialisés avec succès.");
+      console.log("✅ Élèves de la classe 2ème Année B initialisés (25 élèves).");
     }
   } catch(err) {
     console.log("Info DB init:", err.message);
