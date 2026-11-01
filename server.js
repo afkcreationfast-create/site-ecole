@@ -80,7 +80,7 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// LISTES OFFICIELLES 1e A ET 1e B AVEC MÈRES ET TÉLÉPHONES DE RÉFÉRENCE
+// LISTE OFFICIELLE CLASSE 1ère ANNÉE A (Prête à être insérée rigoureusement)[cite: 23]
 const eleves1eA = [
   { nom: "ALTINOR", prenom: "Mike Kryster", code: "S&H-1A01", mere: "Dieudonne J.Altinor", tel: "3336-9498" },
   { nom: "ANDRÉ", prenom: "Dorah Danaelle", code: "S&H-1A02", mere: "Rézida Pierre", tel: "3395-7601" },
@@ -108,35 +108,6 @@ const eleves1eA = [
   { nom: "JEAN PIERRE", prenom: "Sarai", code: "S&H-1A24", mere: "Kerlyne Seize", tel: "4216-0422" },
   { nom: "PIERRE", prenom: "Marli Jordy", code: "S&H-1A25", mere: "Augustin Marceline", tel: "4778-0136" },
   { nom: "SAINT-FLEUR", prenom: "Ethmaëlle", code: "S&H-1A26", mere: "Célestin Marianite", tel: "3331-5476" }
-];
-
-const eleves1eB = [
-  { nom: "AUGUSTIN", prenom: "Jemima", code: "S&H-1B01", mere: "Germanie Grégoire", tel: "5517-2743" },
-  { nom: "BRENORD", prenom: "Weed Lorensky W.", code: "S&H-1B02", mere: "Onard Wilnise", tel: "3262-0343" },
-  { nom: "CHARLES", prenom: "Evenhaissa Bestinie", code: "S&H-1B03", mere: "Vanessa Francisque", tel: "4487-3838" },
-  { nom: "CHERTOUTE", prenom: "Evalynn Brune", code: "S&H-1B04", mere: "Brutus Brunette", tel: "3721-2340" },
-  { nom: "CREJUSTE", prenom: "Ney-Saelie", code: "S&H-1B05", mere: "Clorcin Dieunette", tel: "3467-4364" },
-  { nom: "DALUSMA", prenom: "Djena Erika S.", code: "S&H-1B06", mere: "Mme Sonel Dalusma", tel: "5538-5440" },
-  { nom: "DORVIL", prenom: "Shamaï", code: "S&H-1B07", mere: "Servil Merline", tel: "4257-4054" },
-  { nom: "DUVISIEN", prenom: "Rose-Shaëlla", code: "S&H-1B08", mere: "Ynive Saint Jean", tel: "4311-9556" },
-  { nom: "ISRAËLLE", prenom: "Lune Gaël", code: "S&H-1B09", mere: "Aristilde Leronne", tel: "4305-3856" },
-  { nom: "JEAN BAPTISTE", prenom: "Amadéo A.", code: "S&H-1B10", mere: "Lemarin Jean Baptiste", tel: "3844-9597" },
-  { nom: "JOISIL", prenom: "Rose Daëlle", code: "S&H-1B11", mere: "Marcelus M. Madeleine", tel: "4001-1981 / 4094-0408" },
-  { nom: "JOSEPH", prenom: "Dave", code: "S&H-1B12", mere: "Telemaque Kethnise", tel: "4388-6439" },
-  { nom: "JOSEPH", prenom: "Mariana Nora-Lys", code: "S&H-1B13", mere: "Louis Jean Fabienne", tel: "3911-2644" },
-  { nom: "JOSEPH", prenom: "Nathan Lucas", code: "S&H-1B14", mere: "Paulna Louissant", tel: "4740-1711" },
-  { nom: "JOSEPH", prenom: "Sarah-Djine", code: "S&H-1B15", mere: "Desir Djina", tel: "4240-6607" },
-  { nom: "LOSANDIEU", prenom: "Laura Ashley", code: "S&H-1B16", mere: "Saint-Fleur Maillande", tel: "3460-8513" },
-  { nom: "MATHURIN", prenom: "Achnaïca C.", code: "S&H-1B17", mere: "Mathurin Wilnise", tel: "3323-0772" },
-  { nom: "MILFLEUR", prenom: "Terson", code: "S&H-1B18", mere: "Norlius Franda", tel: "4702-6840" },
-  { nom: "NORD", prenom: "Marvents Fils", code: "S&H-1B19", mere: "Nord Mardochée", tel: "3226-6369" },
-  { nom: "PARVILUS", prenom: "Philippe R.H.", code: "S&H-1B20", mere: "Rose-Mylène Alcéna", tel: "3394-8314 / 4363-0665" },
-  { nom: "PIERRE", prenom: "Luckensia", code: "S&H-1B21", mere: "Fleurentin Irène", tel: "5549-4731" },
-  { nom: "SAINTELUS", prenom: "Ginaylie", code: "S&H-1B22", mere: "Noël Rosline Saintelus", tel: "4201-9986" },
-  { nom: "SAINT-LOUIS", prenom: "Brianna H.", code: "S&H-1B23", mere: "St Louis Brusly", tel: "3810-5026" },
-  { nom: "SINSMYR", prenom: "Malaïca", code: "S&H-1B24", mere: "George Rose Merlande", tel: "3944-3314" },
-  { nom: "TREVOL", prenom: "Fredly Carl-Tensky", code: "S&H-1B25", mere: "Sypain Velouse", tel: "3648-1723 / 4720-6424" },
-  { nom: "VIXAMAR", prenom: "Guerlangélita", code: "S&H-1B26", mere: "Mathieu Guerlande", tel: "3502-8166" }
 ];
 
 async function initTables() {
@@ -200,26 +171,27 @@ async function initTables() {
       END $$;
     `);
 
-    const classesList = [
-      { nom: '1ère Année A', niveau: 'Fondamental', list: eleves1eA },
-      { nom: '1ère Année B', niveau: 'Fondamental', list: eleves1eB }
-    ];
+    // 1. EFFACER TOUTES LES INFORMATIONS DE PARENTS EXISTANTES (MISE À BLANC)
+    await pool.query(`UPDATE utilisateurs SET nom_mere = NULL, tel_mere = NULL WHERE role = 'ELEVE'`);
 
-    const defaultHash = await bcrypt.hash("ecole2026", 12);
-
-    for (const c of classesList) {
-      await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, [c.nom, c.niveau]);
-      const resClass = await pool.query("SELECT id FROM classes WHERE nom = $1 LIMIT 1", [c.nom]);
-      if (resClass.rows.length > 0) {
-        const classId = resClass.rows[0].id;
-        for (const e of c.list) {
-          await pool.query(`
-            INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id, nom_mere, tel_mere)
-            VALUES ($1, $2, $3, $4, 'ELEVE', $5, $6, $7)
-            ON CONFLICT (code_eleve) DO UPDATE 
-            SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id, nom_mere = EXCLUDED.nom_mere, tel_mere = EXCLUDED.tel_mere
-          `, [e.nom, e.prenom, e.code, defaultHash, classId, e.mere || "Non renseigné", e.tel || "—"]);
-        }
+    // 2. INSERTION CLASSE PAR CLASSE (Début avec 1ère Année A)
+    const nomClasse = '1ère Année A';
+    const niveauClasse = 'Fondamental';
+    
+    await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, [nomClasse, niveauClasse]);
+    const resClass = await pool.query("SELECT id FROM classes WHERE nom = $1 LIMIT 1", [nomClasse]);
+    
+    if (resClass.rows.length > 0) {
+      const classId = resClass.rows[0].id;
+      const defaultHash = await bcrypt.hash("ecole2026", 12);
+      
+      for (const e of eleves1eA) {
+        await pool.query(`
+          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id, nom_mere, tel_mere)
+          VALUES ($1, $2, $3, $4, 'ELEVE', $5, $6, $7)
+          ON CONFLICT (code_eleve) DO UPDATE 
+          SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id, nom_mere = EXCLUDED.nom_mere, tel_mere = EXCLUDED.tel_mere
+        `, [e.nom, e.prenom, e.code, defaultHash, classId, e.mere, e.tel]);
       }
     }
   } catch(err) {
@@ -602,7 +574,7 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
-// ROUTE ESPACE ÉLÈVE (AVEC BADGE & COORDONNÉES DE LA MÈRE)
+// ROUTE ESPACE ÉLÈVE
 app.get("/espace-eleve", requireStudent, async (req, res) => {
   try {
     const studentId = req.session.user.id;
@@ -790,7 +762,6 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur classes."); }
 });
 
-// GESTION DES ÉLÈVES AVEC AFFICHAGE DES PARENTS (1e A & 1e B)
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
     const classesRes = await pool.query("SELECT id, nom FROM classes ORDER BY nom ASC");
@@ -825,7 +796,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px">
           <div>
             <h2>🎓 Liste des Élèves &amp; Contacts Parents</h2>
-            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères (Classes 1ère Année A &amp; B).</p>
+            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères (Classe 1ère Année A insérée).</p>
           </div>
           <form method="get" action="/admin/eleves" style="min-width:240px">
             <select name="classe_id" onchange="this.form.submit()">${selectorOptions}</select>
