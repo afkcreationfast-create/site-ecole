@@ -142,37 +142,19 @@ const planScolaire2026 = {
   ]
 };
 
-// LISTE OFFICIELLE DES ÉLÈVES DE 1ÈRE ANNÉE A (FICHE DE PRÉSENCE)
-const eleves1eA = [
-  { nom: "ALTINOR", prenom: "Mike Kryster", code: "S&H-1001" },
-  { nom: "ANDRÉ", prenom: "Dorah Danaelle", code: "S&H-1002" },
-  { nom: "ANTOINE", prenom: "John Erwentz", code: "S&H-1003" },
-  { nom: "AUGUSTE", prenom: "Djoude Maylie", code: "S&H-1004" },
-  { nom: "BOLIVARD", prenom: "Joseph Mitcheïska", code: "S&H-1005" },
-  { nom: "CADUL", prenom: "Richenel", code: "S&H-1006" },
-  { nom: "CARREFOUR", prenom: "Arthur Materrazi", code: "S&H-1007" },
-  { nom: "CASSÉUS", prenom: "Joé Philippe Marino", code: "S&H-1008" },
-  { nom: "CENAT", prenom: "Eud Storly Sofony", code: "S&H-1009" },
-  { nom: "CONTY", prenom: "Alph Gee Owen", code: "S&H-1010" },
-  { nom: "DIARRA", prenom: "Kadidia Angel", code: "S&H-1011" },
-  { nom: "DUMORNÉ", prenom: "Asnaëlle", code: "S&H-1012" },
-  { nom: "ELVA", prenom: "Trosky Fabius", code: "S&H-1013" },
-  { nom: "ENGRAND", prenom: "Vanelson", code: "S&H-1014" },
-  { nom: "FRANCOIS", prenom: "Geslande Lydie", code: "S&H-1015" },
-  { nom: "JOSEPH", prenom: "Bella-Rose", code: "S&H-1016" },
-  { nom: "JOSEPH", prenom: "Olivier Nicardy", code: "S&H-1017" },
-  { nom: "LECONTE", prenom: "Corine Joana", code: "S&H-1018" },
-  { nom: "LOUIS", prenom: "Peter Kawensly", code: "S&H-1019" },
-  { nom: "LUCART", prenom: "Samuel", code: "S&H-1020" },
-  { nom: "NOEL", prenom: "Ruth Jemima Luvie", code: "S&H-1021" },
-  { nom: "PETIT", prenom: "Meryem H. N.", code: "S&H-1022" },
-  { nom: "PIERRE", prenom: "Lia Gamaylie", code: "S&H-1023" },
-  { nom: "JEAN PIERRE", prenom: "Sarai", code: "S&H-1024" },
-  { nom: "PIERRE", prenom: "Marli Jordy", code: "S&H-1025" },
-  { nom: "SAINT-FLEUR", prenom: "Ethmaëlle", code: "S&H-1026" }
+// LISTE OFFICIELLE DES ÉLÈVES DE 2ÈME ANNÉE A (FICHE DE PRÉSENCE)
+const eleves2eA = [
+  { nom: "ALMONOR", prenom: "Jovenel", code: "S&H-2001" },
+  { nom: "AUGUSTIN", prenom: "Ketsia", code: "S&H-2002" },
+  { nom: "BAPTISTE", prenom: "WPC", code: "S&H-2003" },
+  { nom: "CHARLES", prenom: "David", code: "S&H-2004" },
+  { nom: "DORVIL", prenom: "Rachelle", code: "S&H-2005" },
+  { nom: "JOSEPH", prenom: "Stevens", code: "S&H-2006" },
+  { nom: "LOUIS", prenom: "Stphania", code: "S&H-2007" },
+  { nom: "PIERRE", prenom: "Mackendy", code: "S&H-2008" }
 ];
 
-// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DES ÉLÈVES DE 1E A
+// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DE LA CLASSE 2E A
 async function initTables() {
   try {
     await pool.query(`
@@ -260,27 +242,27 @@ async function initTables() {
       );
     `);
 
-    // S'assurer que les classes existent
+    // S'assurer que la classe 2ème Année A existe
     await pool.query(`
       INSERT INTO classes (nom, niveau) 
-      VALUES ('1ère Année A', 'Fondamental'), ('1ère Année B', 'Fondamental'), ('2ème Année A', 'Fondamental'), ('Kindergarten', 'Maternelle')
+      VALUES ('2ème Année A', 'Fondamental')
       ON CONFLICT (nom) DO NOTHING
     `);
 
-    // Insérer automatiquement les élèves de 1ère Année A
-    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '1ère Année A' LIMIT 1");
+    // Insérer automatiquement les élèves de 2ème Année A
+    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année A' LIMIT 1");
     if (resClass.rows.length > 0) {
-      const classe1eAId = resClass.rows[0].id;
+      const classe2eAId = resClass.rows[0].id;
       const defaultHash = await bcrypt.hash("ecole2026", 12);
 
-      for (const e of eleves1eA) {
+      for (const e of eleves2eA) {
         await pool.query(`
           INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
           VALUES ($1, $2, $3, $4, 'ELEVE', $5)
           ON CONFLICT DO NOTHING
-        `, [e.nom, e.prenom, e.code, defaultHash, classe1eAId]);
+        `, [e.nom, e.prenom, e.code, defaultHash, classe2eAId]);
       }
-      console.log("✅ Élèves de la classe 1ère Année A initialisés avec succès.");
+      console.log("✅ Élèves de la classe 2ème Année A initialisés avec succès.");
     }
   } catch(err) {
     console.log("Info DB init:", err.message);
@@ -479,12 +461,6 @@ input, select, textarea {
   box-shadow: 0 7px 22px rgba(17,36,72,.05); padding: 20px; margin-bottom: 14px;
 }
 .devoir-date-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .78rem; font-weight: 800; background: #fef3c7; color: #92400e; margin-bottom: 8px; }
-.calendar-grid { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 8px !important; margin-top: 14px !important; text-align: center !important; }
-.calendar-day-head { font-weight: 700; font-size: .82rem; color: var(--lk-muted); text-transform: uppercase; padding: 6px 0; }
-.calendar-cell { padding: 12px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; background: #f8fafc; border: 1px solid var(--lk-line); }
-.calendar-cell.present { background: #22c55e; color: #fff; }
-.calendar-cell.absent { background: #ef4444; color: #fff; }
-.calendar-cell.retard { background: #64748b; color: #fff; }
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
