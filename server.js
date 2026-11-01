@@ -401,7 +401,6 @@ async function initTables() {
       );
     `);
 
-    // Insérer toutes les classes
     const classesList = [
       { nom: 'Kinder A', niveau: 'Préscolaire', list: elevesKinderA },
       { nom: 'Kinder B', niveau: 'Préscolaire', list: elevesKinderB },
@@ -779,6 +778,38 @@ app.get("/", async (req, res) => {
   } catch (e) { res.status(500).send("Erreur accueil."); }
 });
 
+// ROUTE ESPACE ÉLÈVE
+app.get("/espace-eleve", requireStudent, async (req, res) => {
+  try {
+    const studentId = req.session.user.id;
+    const studentData = (await pool.query("SELECT u.*, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.id=$1", [studentId])).rows[0];
+    
+    const content = `
+      <div class="card">
+        <h2>🎓 Espace Élève — Mon Dossier &amp; Badge</h2>
+        <p style="color:var(--lk-muted)">Bienvenue dans ton espace personnel, <b>${h(studentData.prenom)} ${h(studentData.nom)}</b>.</p>
+        <div style="margin-top:20px;padding:20px;background:#f8fafc;border-radius:16px;border:1px solid var(--lk-line)">
+          <p><b>Classe :</b> ${h(studentData.nom_classe || "Non assignée")}</p>
+          <p><b>Code Unique (Badge) :</b> <span class="excel-badge">${h(studentData.code_eleve)}</span></p>
+        </div>
+      </div>`;
+    res.send(layout("Mon Espace Élève", content, req));
+  } catch (e) {
+    res.status(500).send("Erreur espace élève.");
+  }
+});
+
+// ROUTE ESPACE PARENT
+app.get("/espace-parent", (req, res) => {
+  if (!req.session.user || req.session.user.role !== "PARENT") return res.redirect("/connexion");
+  res.send(layout("Espace Parent", `<div class="card"><h2>👪 Espace Parent</h2><p>Suivi de la scolarité de votre enfant.</p></div>`, req));
+});
+
+// ROUTE BULLETIN
+app.get("/bulletin", requireStudent, (req, res) => {
+  res.send(layout("Mon Bulletin", `<div class="card"><h2>📊 Mon Bulletin Scolaire</h2><p>Consultez vos notes et appréciations par période.</p></div>`, req));
+});
+
 // ROUTE DEVOIRS & LEÇONS
 app.get("/devoirs", async (req, res) => {
   try {
@@ -830,6 +861,17 @@ app.get("/devoirs", async (req, res) => {
 
     res.send(layout(`Devoirs - ${classeNom}`, content, req));
   } catch (e) { res.status(500).send("Erreur devoirs."); }
+});
+
+// ROUTE HORAIRE DES COURS
+app.get("/horaire", async (req, res) => {
+  res.send(layout("Horaire des Cours", `<div class="card"><h2>📅 Horaire des Cours</h2><p>Emploi du temps officiel des classes.</p></div>`, req));
+});
+
+// ROUTE MESSAGERIE
+app.get("/messages", (req, res) => {
+  if (!req.session.user) return res.redirect("/connexion");
+  res.send(layout("Messagerie", `<div class="card"><h2>✉️ Messagerie Interne</h2><p>Espace de communication sécurisé.</p></div>`, req));
 });
 
 // ROUTE PRISE D'APPEL
@@ -923,7 +965,7 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur classes."); }
 });
 
-// GESTION DES ÉLÈVES AVEC FILTRE PAR CLASSE (TOUS LES ÉLÈVES OU CLASSE SPÉCIFIQUE)
+// GESTION DES ÉLÈVES AVEC FILTRE PAR CLASSE
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
     const classesRes = await pool.query("SELECT id, nom FROM classes ORDER BY nom ASC");
