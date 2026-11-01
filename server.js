@@ -80,7 +80,6 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// LISTE COMPLÈTE ET OFFICIELLE DE LA CLASSE 1e A (Avec toutes les informations extraites)[cite: 26]
 const eleves1eA = [
   { nom: "ALTINOR", prenom: "Mike Kryster", code: "S&H-1A01", mere: "Dieudonne J.Altinor", tel: "3336-9498" },
   { nom: "ANDRÉ", prenom: "Dorah Danaelle", code: "S&H-1A02", mere: "Rézida Pierre", tel: "3395-7601" },
@@ -171,10 +170,28 @@ async function initTables() {
       END $$;
     `);
 
-    // REMISE À ZÉRO DES PARENTS POUR REPARTIR PROPREMENT
-    await pool.query(`UPDATE utilisateurs SET nom_mere = NULL, tel_mere = NULL WHERE role = 'ELEVE'`);
+    // 1. SUPPRESSION AUTOMATIQUE DES DOUBLONS (Garde l'ID le plus élevé pour chaque doublon nom/prénom/classe)
+    await pool.query(`
+      DELETE FROM utilisateurs a USING utilisateurs b
+      WHERE a.id < b.id 
+        AND a.role = 'ELEVE' 
+        AND b.role = 'ELEVE'
+        AND lower(trim(a.nom)) = lower(trim(b.nom)) 
+        AND lower(trim(a.prenom)) = lower(trim(b.prenom))
+        AND a.classe_id = b.classe_id;
+    `);
 
-    // INSERTION DE LA CLASSE 1ère ANNÉE A AVEC LES DONNÉES OFFICIELLES EXTRATES
+    // 2. AJOUT D'UNE CONTRAINTE UNIQUE POUR EMPÊCHER LES DOUBLONS À L'AVENIR
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_eleve_nom_prenom_classe') THEN
+          ALTER TABLE utilisateurs ADD CONSTRAINT uq_eleve_nom_prenom_classe UNIQUE (nom, prenom, classe_id);
+        END IF;
+      END $$;
+    `);
+
+    // 3. INSERTION PROPRE DE LA CLASSE 1ère ANNÉE A
     const nomClasse = '1ère Année A';
     const niveauClasse = 'Fondamental';
     
@@ -796,7 +813,7 @@ app.get("/admin/eleves", requireAdmin, async (req, res) => {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px">
           <div>
             <h2>🎓 Liste des Élèves &amp; Contacts Parents</h2>
-            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères (Classe 1ère Année A mise à jour).</p>
+            <p style="color:var(--lk-muted);margin:4px 0 0">Suivi des élèves, codes et numéros de téléphone des mères (anti-doublons actif).</p>
           </div>
           <form method="get" action="/admin/eleves" style="min-width:240px">
             <select name="classe_id" onchange="this.form.submit()">${selectorOptions}</select>
