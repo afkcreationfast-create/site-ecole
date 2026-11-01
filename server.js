@@ -84,7 +84,64 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// MIGRATIONS AUTOMATIQUES & NETTOYAGE COMPLET DE 2E A ET 2E B
+// LISTES OFFICIELLES EXACTES (25 ÉLÈVES PAR CLASSE)
+const eleves2eA = [
+  { nom: "CELIMAR", prenom: "Gamaliel Gerardo", code: "S&H-2A01" },
+  { nom: "CESAR", prenom: "Esther", code: "S&H-2A02" },
+  { nom: "CHERENFANT", prenom: "Andy E.", code: "S&H-2A03" },
+  { nom: "CLERPHE", prenom: "Rod-Hansley", code: "S&H-2A04" },
+  { nom: "ELIANE", prenom: "Joyce Polo Sandrina", code: "S&H-2A05" },
+  { nom: "ETIENNE", prenom: "Djouvensa Mayard", code: "S&H-2A06" },
+  { nom: "FELIX", prenom: "Anders Franderly", code: "S&H-2A07" },
+  { nom: "FUCIEN", prenom: "Jamescar", code: "S&H-2A08" },
+  { nom: "JEAN", prenom: "Ange Thamar Kendaëlle", code: "S&H-2A09" },
+  { nom: "JEAN", prenom: "Montimer Valery", code: "S&H-2A10" },
+  { nom: "JEAN", prenom: "Ted Ashley Matéo", code: "S&H-2A11" },
+  { nom: "JOSEPH", prenom: "Joe Jacky", code: "S&H-2A12" },
+  { nom: "LAURORE", prenom: "Ruth Shama", code: "S&H-2A13" },
+  { nom: "LOUIS", prenom: "Dabentz", code: "S&H-2A14" },
+  { nom: "LOUIS", prenom: "Dardy Ezéchiel", code: "S&H-2A15" },
+  { nom: "LOUIS", prenom: "Georges Gabriella", code: "S&H-2A16" },
+  { nom: "LUCIEN", prenom: "Frantz Shynayder", code: "S&H-2A17" },
+  { nom: "ORELUS", prenom: "Aslin", code: "S&H-2A18" },
+  { nom: "PIERRE", prenom: "Jessy Hansa", code: "S&H-2A19" },
+  { nom: "PIVERGER", prenom: "Lynn Prisca", code: "S&H-2A20" },
+  { nom: "PRÉDESTIN", prenom: "Youmica", code: "S&H-2A21" },
+  { nom: "PRÉSUME", prenom: "Marckly Joe Zach", code: "S&H-2A22" },
+  { nom: "SAINT-FORT", prenom: "JacqueCevens", code: "S&H-2A23" },
+  { nom: "THIMOLÉON", prenom: "Steph", code: "S&H-2A24" },
+  { nom: "THIMOTHEE", prenom: "Kerry Ervin", code: "S&H-2A25" }
+];
+
+const eleves2eB = [
+  { nom: "ANTOINE", prenom: "Marx Dony H.", code: "S&H-2B01" },
+  { nom: "ARMAND", prenom: "Leyscha", code: "S&H-2B02" },
+  { nom: "BELAMOUR", prenom: "Lentz-Malaika", code: "S&H-2B03" },
+  { nom: "BIEN-AIMÉ", prenom: "Marck Jhon Kelly", code: "S&H-2B04" },
+  { nom: "BRUTUS", prenom: "Ella Amara", code: "S&H-2B05" },
+  { nom: "CALIXTE", prenom: "Ashley-Cole", code: "S&H-2B06" },
+  { nom: "CHARLES", prenom: "Ruthdjirsie", code: "S&H-2B07" },
+  { nom: "CINA", prenom: "Daphnaëlle", code: "S&H-2B08" },
+  { nom: "ELIANÉ", prenom: "Greyce Polosand", code: "S&H-2B09" },
+  { nom: "ESTIMABLE", prenom: "Hans Ashley", code: "S&H-2B10" },
+  { nom: "EUGÈNE", prenom: "Prince Weddersone", code: "S&H-2B11" },
+  { nom: "GEORGES", prenom: "Yaelle Carlidjourie C.", code: "S&H-2B12" },
+  { nom: "GERVAIS", prenom: "Vitanae", code: "S&H-2B13" },
+  { nom: "JEAN JACQUES", prenom: "Sanderline", code: "S&H-2B14" },
+  { nom: "JEAN LOUIS", prenom: "Serge Darly", code: "S&H-2B15" },
+  { nom: "JOSEPH", prenom: "Ezéchiel", code: "S&H-2B16" },
+  { nom: "LAMOUR", prenom: "Christy Laurendie", code: "S&H-2B17" },
+  { nom: "MATHURIN", prenom: "Louinie Marah St J.", code: "S&H-2B18" },
+  { nom: "MÉNARD", prenom: "Maelle Esther Lourdes", code: "S&H-2B19" },
+  { nom: "MUSCADIN", prenom: "Nathanaëlle", code: "S&H-2B20" },
+  { nom: "RENÉ", prenom: "Sephora", code: "S&H-2B21" },
+  { nom: "RÉNÉLUS", prenom: "Emmashirah", code: "S&H-2B22" },
+  { nom: "SABIN", prenom: "Bendinho Chrismaëll", code: "S&H-2B23" },
+  { nom: "SAINT PHAT", prenom: "Judney Valéry", code: "S&H-2B24" },
+  { nom: "SAINTEA", prenom: "Wedzer Junior", code: "S&H-2B25" }
+];
+
+// MIGRATIONS AUTOMATIQUES & INSERTION PROPRE DES CLASSES 2E A ET 2E B
 async function initTables() {
   try {
     await pool.query(`
@@ -183,14 +240,39 @@ async function initTables() {
       ON CONFLICT (nom) DO NOTHING
     `);
 
-    // SUPPRESSION DE TOUS LES ÉLÈVES DES CLASSES 2E A ET 2E B
-    await pool.query(`
-      DELETE FROM utilisateurs 
-      WHERE classe_id IN (SELECT id FROM classes WHERE nom IN ('2ème Année A', '2ème Année B'))
-        AND role = 'ELEVE'
-    `);
-    
-    console.log("🧹 Élèves des classes 2ème Année A et 2ème Année B entièrement supprimés de la base de données.");
+    const defaultHash = await bcrypt.hash("ecole2026", 12);
+
+    // NETTOYAGE ET INSERTION PROPRE DE LA CLASSE 2ÈME ANNÉE A (25 ÉLÈVES)
+    const resClass2A = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année A' LIMIT 1");
+    if (resClass2A.rows.length > 0) {
+      const id2A = resClass2A.rows[0].id;
+      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id2A]);
+      
+      for (const e of eleves2eA) {
+        await pool.query(`
+          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
+          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
+          ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
+        `, [e.nom, e.prenom, e.code, defaultHash, id2A]);
+      }
+      console.log("✅ Classe 2ème Année A synchronisée (exactement 25 élèves).");
+    }
+
+    // NETTOYAGE ET INSERTION PROPRE DE LA CLASSE 2ÈME ANNÉE B (25 ÉLÈVES)
+    const resClass2B = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année B' LIMIT 1");
+    if (resClass2B.rows.length > 0) {
+      const id2B = resClass2B.rows[0].id;
+      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [id2B]);
+
+      for (const e of eleves2eB) {
+        await pool.query(`
+          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
+          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
+          ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
+        `, [e.nom, e.prenom, e.code, defaultHash, id2B]);
+      }
+      console.log("✅ Classe 2ème Année B synchronisée (exactement 25 élèves).");
+    }
 
   } catch(err) {
     console.log("Info DB init:", err.message);
