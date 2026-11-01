@@ -84,7 +84,7 @@ const getTodayDate = () => {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port-au-Prince" });
 };
 
-// LISTES OFFICIELLES EXTRAITES DES FICHES DE PRÉSENCE (KINDER A et KINDER B)
+// LISTES OFFICIELLES (Kinder A, Kinder B, 4e A, 4e B, 5e A, 5e B, 6e A, 6e B)
 const elevesKinderA = [
   { nom: "ALEXANDRA", prenom: "Ada Ismine Leica", code: "S&H-KINA01" },
   { nom: "ANDRÉ", prenom: "Princesse Darline Z.S.", code: "S&H-KINA02" },
@@ -141,7 +141,175 @@ const elevesKinderB = [
   { nom: "SIMEUS", prenom: "Youdencie Nasheka", code: "S&H-KINB25" }
 ];
 
-// MIGRATIONS AUTOMATIQUES & INITIALISATION DES CLASSES KINDER A ET KINDER B
+const eleves4eA = [
+  { nom: "ALCÉ", prenom: "Woodsheldine", code: "S&H-4A01" },
+  { nom: "BRUNO", prenom: "Sara", code: "S&H-4A02" },
+  { nom: "BRUTUS", prenom: "Aliya", code: "S&H-4A03" },
+  { nom: "CHARLES", prenom: "Abigaelle", code: "S&H-4A04" },
+  { nom: "CHÉRI", prenom: "Marc Olivier Harvens", code: "S&H-4A05" },
+  { nom: "CLAIRVIL", prenom: "Amsterly", code: "S&H-4A06" },
+  { nom: "DANTIL", prenom: "Ghisnaïca", code: "S&H-4A07" },
+  { nom: "DÉSARME", prenom: "Guivensley", code: "S&H-4A08" },
+  { nom: "DZEGBA", prenom: "Yawo Thimothée", code: "S&H-4A09" },
+  { nom: "EDMOND", prenom: "Wed Hendell Sondy", code: "S&H-4A10" },
+  { nom: "ETIENNE", prenom: "Adley", code: "S&H-4A11" },
+  { nom: "FÉNÉLON", prenom: "Daliya Ruth Shamma", code: "S&H-4A12" },
+  { nom: "GENTILHOMME", prenom: "Anderson", code: "S&H-4A13" },
+  { nom: "GÉRARD", prenom: "Joyci Lei Milouska", code: "S&H-4A14" },
+  { nom: "GUILLAUME", prenom: "Jeffrey Theven J.", code: "S&H-4A15" },
+  { nom: "HYACINTHE", prenom: "Livinaëlle", code: "S&H-4A16" },
+  { nom: "THELEON", prenom: "Anna Joaquina Barbara T.", code: "S&H-4A17" },
+  { nom: "LUCIEN", prenom: "Lyneïsha", code: "S&H-4A18" },
+  { nom: "MICHEL", prenom: "Félix Aiden", code: "S&H-4A19" },
+  { nom: "MUSCADIN", prenom: "Johnsley", code: "S&H-4A20" },
+  { nom: "PHILIPPE", prenom: "Bernsley Puccini", code: "S&H-4A21" },
+  { nom: "PIERRE", prenom: "Déborah", code: "S&H-4A22" },
+  { nom: "PIERRE", prenom: "Shamanaëlle", code: "S&H-4A23" },
+  { nom: "SAINT FLEUR", prenom: "Evah Smily", code: "S&H-4A24" },
+  { nom: "SYLVAIN", prenom: "Carl Hensley", code: "S&H-4A25" }
+];
+
+const eleves4eB = [
+  { nom: "ALEXANDRE", prenom: "Djanellie", code: "S&H-4B01" },
+  { nom: "ANGRAND", prenom: "Ben Adler Kensley", code: "S&H-4B02" },
+  { nom: "ARMAND", prenom: "Behi Devlyne", code: "S&H-4B03" },
+  { nom: "AUGUSTIN", prenom: "Kervens Heberly", code: "S&H-4B04" },
+  { nom: "BRAVE", prenom: "Redenica Nettie", code: "S&H-4B05" },
+  { nom: "BRENORD", prenom: "Christopher Adams", code: "S&H-4B06" },
+  { nom: "CADET", prenom: "Abed Solontz", code: "S&H-4B07" },
+  { nom: "CHÉRY", prenom: "Maleynie", code: "S&H-4B08" },
+  { nom: "FÉNÉLON", prenom: "Dackerly Angel M.", code: "S&H-4B09" },
+  { nom: "INNOCENT", prenom: "Marly", code: "S&H-4B10" },
+  { nom: "JEAN BAPTISTE", prenom: "Samirah Zeruiah", code: "S&H-4B11" },
+  { nom: "JEAN", prenom: "Camessee", code: "S&H-4B12" },
+  { nom: "JOSEPH", prenom: "Samuel", code: "S&H-4B13" },
+  { nom: "LAFORCE", prenom: "Naïla", code: "S&H-4B14" },
+  { nom: "LAMBERT", prenom: "Rose Nedjine", code: "S&H-4B15" },
+  { nom: "LAMOUR", prenom: "Ange Stephano", code: "S&H-4B16" },
+  { nom: "MICHEL", prenom: "Sablantha Roselandie", code: "S&H-4B17" },
+  { nom: "PETIT-FRÈRE", prenom: "Ysvenka", code: "S&H-4B18" },
+  { nom: "PIERRE", prenom: "Idelyn", code: "S&H-4B19" },
+  { nom: "PIERRE", prenom: "Ralph Peter", code: "S&H-4B20" },
+  { nom: "PIERRE", prenom: "Rodkerson", code: "S&H-4B21" },
+  { nom: "RENÉ", prenom: "Laura", code: "S&H-4B22" },
+  { nom: "SAINT PHAT", prenom: "Christelle Esther", code: "S&H-4B23" },
+  { nom: "JOSEPH DORSAINVIL", prenom: "Saskyana Kyama M.", code: "S&H-4B24" },
+  { nom: "TANIS", prenom: "Rose Cartie", code: "S&H-4B25" }
+];
+
+const eleves5eA = [
+  { nom: "CHERENFANT", prenom: "Karl Eindji", code: "S&H-5A01" },
+  { nom: "CHER-ENFANT", prenom: "Clarens Y. J.", code: "S&H-5A02" },
+  { nom: "CINÉAS", prenom: "Medjine", code: "S&H-5A03" },
+  { nom: "CRÉJUSTE", prenom: "Rood-Neylie", code: "S&H-5A04" },
+  { nom: "DALUSMA", prenom: "Jemps Junior", code: "S&H-5A05" },
+  { nom: "DIEUDONNÉ", prenom: "Erlanda Maeva", code: "S&H-5A06" },
+  { nom: "EUGÈNE", prenom: "Prince Weddersky", code: "S&H-5A07" },
+  { nom: "FÉLIX", prenom: "Mike Wolden", code: "S&H-5A08" },
+  { nom: "FRANCOIS", prenom: "Josué", code: "S&H-5A09" },
+  { nom: "FRANÇOIS", prenom: "Lealeel Israel", code: "S&H-5A10" },
+  { nom: "GABRIEL", prenom: "Jesly", code: "S&H-5A11" },
+  { nom: "JOSEPH", prenom: "Ankara C.S.", code: "S&H-5A12" },
+  { nom: "JOSEPH", prenom: "Loutchie Max A.", code: "S&H-5A13" },
+  { nom: "LECONTE", prenom: "Jordany", code: "S&H-5A14" },
+  { nom: "LOUIS", prenom: "Fadeleïka", code: "S&H-5A15" },
+  { nom: "PARVILUS", prenom: "Rockviadallah P. H.", code: "S&H-5A16" },
+  { nom: "PIERRE", prenom: "Blondine Florica", code: "S&H-5A17" },
+  { nom: "PIERRE", prenom: "Joshua Christopher", code: "S&H-5A18" },
+  { nom: "PLUVIOSE", prenom: "Prince Mike Jessy", code: "S&H-5A19" },
+  { nom: "PRÉVIL", prenom: "Carvensley O.", code: "S&H-5A20" },
+  { nom: "PROPHÈTE", prenom: "Rody Feb Marley", code: "S&H-5A21" },
+  { nom: "SAINT FLEUR", prenom: "Darlensky", code: "S&H-5A22" },
+  { nom: "SAINT-VIL", prenom: "Rood Rihanna", code: "S&H-5A23" },
+  { nom: "SIMON", prenom: "Samora Lydie A.", code: "S&H-5A24" },
+  { nom: "THÉLÉMARQUE", prenom: "Christ M.", code: "S&H-5A25" }
+];
+
+const eleves5eB = [
+  { nom: "ALEXIS", prenom: "Christelle Stessie D.", code: "S&H-5B01" },
+  { nom: "ANTOINE", prenom: "Sheslie Ricardine", code: "S&H-5B02" },
+  { nom: "BAPTISTE", prenom: "Taissa", code: "S&H-5B03" },
+  { nom: "CHARLES", prenom: "Schteirdju", code: "S&H-5B04" },
+  { nom: "DORVIL", prenom: "Sheenaydine", code: "S&H-5B05" },
+  { nom: "ETIENNE", prenom: "Christie Danick", code: "S&H-5B06" },
+  { nom: "EVARISTE", prenom: "Fredony Junior N.", code: "S&H-5B07" },
+  { nom: "FÉNÉLUS", prenom: "Abichague", code: "S&H-5B08" },
+  { nom: "JEAN BAPTISTE", prenom: "Loudjedarlie", code: "S&H-5B09" },
+  { nom: "LECONTE", prenom: "Clodany", code: "S&H-5B10" },
+  { nom: "LOUIS", prenom: "Flaydy", code: "S&H-5B11" },
+  { nom: "LOUIS", prenom: "Ruth Nathanaelle", code: "S&H-5B12" },
+  { nom: "LUMA", prenom: "Julanda", code: "S&H-5B13" },
+  { nom: "MANASSÉ", prenom: "Ednicka Laura", code: "S&H-5B14" },
+  { nom: "MARCELLUS", prenom: "Genielson", code: "S&H-5B15" },
+  { nom: "MARS", prenom: "Maritza Chloé", code: "S&H-5B16" },
+  { nom: "MOMPREMIER", prenom: "Faïsha Mara", code: "S&H-5B17" },
+  { nom: "MONCHER", prenom: "Jimaelka", code: "S&H-5B18" },
+  { nom: "PIERRE", prenom: "Guervensley R.", code: "S&H-5B19" },
+  { nom: "PIERRE", prenom: "Jefferson", code: "S&H-5B20" },
+  { nom: "PIERRE", prenom: "Kedly Hantzley N.", code: "S&H-5B21" },
+  { nom: "SAINT PHAT", prenom: "Kedj Rhoby", code: "S&H-5B22" },
+  { nom: "THÉODOR", prenom: "Woutchelle", code: "S&H-5B23" },
+  { nom: "THIEOGÈNE", prenom: "Ketura", code: "S&H-5B24" },
+  { nom: "VIXAMAR", prenom: "Varlie Esther", code: "S&H-5B25" }
+];
+
+const eleves6eA = [
+  { nom: "ALEXIS", prenom: "Winie Fedjina", code: "S&H-6A01" },
+  { nom: "ALIZZA", prenom: "Rose Maykelie B.", code: "S&H-6A02" },
+  { nom: "ALTINOR", prenom: "Mike Andjelsie", code: "S&H-6A03" },
+  { nom: "AUGUSTIN", prenom: "Lounevada", code: "S&H-6A04" },
+  { nom: "BAPTISTE", prenom: "Rhode-Vika", code: "S&H-6A05" },
+  { nom: "CADET", prenom: "Rose-Farlande", code: "S&H-6A06" },
+  { nom: "CINÉAS", prenom: "Meghan", code: "S&H-6A07" },
+  { nom: "DABEL", prenom: "Chedelin", code: "S&H-6A08" },
+  { nom: "DIEUDONNÉ", prenom: "Dieuvenson", code: "S&H-6A09" },
+  { nom: "DORMEIL", prenom: "Mike Dorlin", code: "S&H-6A10" },
+  { nom: "DUME", prenom: "Dempsey", code: "S&H-6A11" },
+  { nom: "GUERRIER", prenom: "Suzie Valdarha", code: "S&H-6A12" },
+  { nom: "HYACINTHE", prenom: "Extrason F.", code: "S&H-6A13" },
+  { nom: "INNOCENT", prenom: "Wevenide Alexis", code: "S&H-6A14" },
+  { nom: "JEAN", prenom: "Jayden Josh", code: "S&H-6A15" },
+  { nom: "LOCÉAN", prenom: "Carl Max Yvelt Jean", code: "S&H-6A16" },
+  { nom: "LOUISSAINT", prenom: "Christaelle", code: "S&H-6A17" },
+  { nom: "MÉZIL", prenom: "Sama Loudyna", code: "S&H-6A18" },
+  { nom: "MUSEAU", prenom: "Weldy", code: "S&H-6A19" },
+  { nom: "PIERRE", prenom: "Hadassa", code: "S&H-6A20" },
+  { nom: "PIERRE", prenom: "Lukency", code: "S&H-6A21" },
+  { nom: "PIERRE", prenom: "Ruthamar", code: "S&H-6A22" },
+  { nom: "ROSANAT", prenom: "Sam Vilentz", code: "S&H-6A23" },
+  { nom: "SAINT PHAT", prenom: "Max David", code: "S&H-6A24" },
+  { nom: "SALOMON", prenom: "Belintchy", code: "S&H-6A25" }
+];
+
+const eleves6eB = [
+  { nom: "AMBROISE", prenom: "Technaida", code: "S&H-6B01" },
+  { nom: "ANTÉNOR", prenom: "Leila Meisha", code: "S&H-6B02" },
+  { nom: "ARISTIL", prenom: "Prosinecky", code: "S&H-6B03" },
+  { nom: "AUGUSTIN", prenom: "Florie Keniwies", code: "S&H-6B04" },
+  { nom: "BELIZAIRE", prenom: "Edmanelle Belinda", code: "S&H-6B05" },
+  { nom: "BERNADIN", prenom: "Carrel", code: "S&H-6B06" },
+  { nom: "BONHOMME", prenom: "Abdias", code: "S&H-6B07" },
+  { nom: "BRUTUS", prenom: "Lordson", code: "S&H-6B08" },
+  { nom: "CHARLIN", prenom: "Adassa Max Marra", code: "S&H-6B09" },
+  { nom: "DALUSMA", prenom: "Rodensly", code: "S&H-6B10" },
+  { nom: "DOLCÉ", prenom: "Rod-Stephnie", code: "S&H-6B11" },
+  { nom: "ETIENNE", prenom: "Prince Storly", code: "S&H-6B12" },
+  { nom: "FRANCOIS", prenom: "Youvensly", code: "S&H-6B13" },
+  { nom: "ISRAEL", prenom: "Tameca", code: "S&H-6B14" },
+  { nom: "JEAN NOEL", prenom: "Orisbenne", code: "S&H-6B15" },
+  { nom: "JEAN", prenom: "Wiskaylove", code: "S&H-6B16" },
+  { nom: "JEAN", prenom: "Yvensca", code: "S&H-6B17" },
+  { nom: "JOSEPH", prenom: "Ederson Delly", code: "S&H-6B18" },
+  { nom: "JOSEPH", prenom: "Ruth-Shamma W.", code: "S&H-6B19" },
+  { nom: "MAURICE", prenom: "Lawrhence", code: "S&H-6B20" },
+  { nom: "MONESTIME", prenom: "Marie Carmelle", code: "S&H-6B21" },
+  { nom: "PIERRE", prenom: "Wilnise", code: "S&H-6B22" },
+  { nom: "RUFIN", prenom: "Vastie Leila", code: "S&H-6B23" },
+  { nom: "SAINT FLEUR", prenom: "Mike Dawentz", code: "S&H-6B24" },
+  { nom: "SÉVÈRE", prenom: "Jovena Panova", code: "S&H-6B25" }
+];
+
+// INITIALISATION AUTOMATIQUE DES CLASSES ET DES ÉLÈVES
 async function initTables() {
   try {
     await pool.query(`
@@ -151,7 +319,7 @@ async function initTables() {
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
         nom VARCHAR(100) NOT NULL UNIQUE,
-        niveau VARCHAR(50) DEFAULT 'Préscolaire'
+        niveau VARCHAR(50) DEFAULT 'Fondamental'
       );
       
       CREATE TABLE IF NOT EXISTS matieres_classes (
@@ -233,53 +401,42 @@ async function initTables() {
       );
     `);
 
-    // S'assurer que les classes Kinder A et Kinder B existent
-    await pool.query(`
-      INSERT INTO classes (nom, niveau) 
-      VALUES ('Kinder A', 'Préscolaire'), ('Kinder B', 'Préscolaire')
-      ON CONFLICT (nom) DO NOTHING
-    `);
+    // Insérer toutes les classes
+    const classesList = [
+      { nom: 'Kinder A', niveau: 'Préscolaire', list: elevesKinderA },
+      { nom: 'Kinder B', niveau: 'Préscolaire', list: elevesKinderB },
+      { nom: '4ème Année A', niveau: 'Fondamental', list: eleves4eA },
+      { nom: '4ème Année B', niveau: 'Fondamental', list: eleves4eB },
+      { nom: '5ème Année A', niveau: 'Fondamental', list: eleves5eA },
+      { nom: '5ème Année B', niveau: 'Fondamental', list: eleves5eB },
+      { nom: '6ème Année A', niveau: 'Fondamental', list: eleves6eA },
+      { nom: '6ème Année B', niveau: 'Fondamental', list: eleves6eB }
+    ];
 
     const defaultHash = await bcrypt.hash("ecole2026", 12);
 
-    // Insertion & Synchronisation des élèves de Kinder A (25 élèves)[cite: 12]
-    const resClassKina = await pool.query("SELECT id FROM classes WHERE nom = 'Kinder A' LIMIT 1");
-    if (resClassKina.rows.length > 0) {
-      const idKina = resClassKina.rows[0].id;
-      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [idKina]);
-
-      for (const e of elevesKinderA) {
-        await pool.query(`
-          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
-          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
-          ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
-        `, [e.nom, e.prenom, e.code, defaultHash, idKina]);
+    for (const c of classesList) {
+      await pool.query(`INSERT INTO classes (nom, niveau) VALUES ($1, $2) ON CONFLICT (nom) DO NOTHING`, [c.nom, c.niveau]);
+      const resClass = await pool.query("SELECT id FROM classes WHERE nom = $1 LIMIT 1", [c.nom]);
+      if (resClass.rows.length > 0) {
+        const classId = resClass.rows[0].id;
+        await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [classId]);
+        for (const e of c.list) {
+          await pool.query(`
+            INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
+            VALUES ($1, $2, $3, $4, 'ELEVE', $5)
+            ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
+          `, [e.nom, e.prenom, e.code, defaultHash, classId]);
+        }
       }
-      console.log("✅ Élèves de la classe Kinder A initialisés (25 élèves)[cite: 12].");
     }
-
-    // Insertion & Synchronisation des élèves de Kinder B (25 élèves)[cite: 11]
-    const resClassKinb = await pool.query("SELECT id FROM classes WHERE nom = 'Kinder B' LIMIT 1");
-    if (resClassKinb.rows.length > 0) {
-      const idKinb = resClassKinb.rows[0].id;
-      await pool.query("DELETE FROM utilisateurs WHERE classe_id = $1 AND role = 'ELEVE'", [idKinb]);
-
-      for (const e of elevesKinderB) {
-        await pool.query(`
-          INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
-          VALUES ($1, $2, $3, $4, 'ELEVE', $5)
-          ON CONFLICT (code_eleve) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, classe_id = EXCLUDED.classe_id
-        `, [e.nom, e.prenom, e.code, defaultHash, idKinb]);
-      }
-      console.log("✅ Élèves de la classe Kinder B initialisés (25 élèves)[cite: 11].");
-    }
-
+    console.log("✅ Toutes les classes et élèves ont été synchronisés avec succès.");
   } catch(err) {
     console.log("Info DB init:", err.message);
   }
 }
 
-// LAYOUT RESPONSIVE & STYLE GLOBAL (SIGNATURE DESIGN 2026 + MOBILE PREMIUM)
+// LAYOUT RESPONSIVE & DESIGN 2026
 const layout = (title, content, req) => {
   const isAuth = !!req.session.user;
   const user = isAuth ? req.session.user : null;
@@ -766,13 +923,63 @@ app.get("/admin/classes", requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).send("Erreur classes."); }
 });
 
-// GESTION DES ÉLÈVES
+// GESTION DES ÉLÈVES AVEC FILTRE PAR CLASSE (TOUS LES ÉLÈVES OU CLASSE SPÉCIFIQUE)
 app.get("/admin/eleves", requireAdmin, async (req, res) => {
   try {
-    const students = await pool.query("SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE' ORDER BY c.nom ASC, u.nom ASC");
-    const studentRows = students.rows.map(s => `<tr><td><b>${h(s.nom)} ${h(s.prenom)}</b></td><td><b>${h(s.nom_classe || "Non assignée")}</b></td><td><span class="excel-badge">${h(s.code_eleve)}</span></td></tr>`).join("");
-    res.send(layout("Élèves", `<div class="card"><a href="/admin" class="btn secondary">⬅️ Retour</a><h2>🎓 Élèves Inscrits (${students.rows.length})</h2><div class="excel-table-container"><table class="excel-table"><thead><tr><th>Élève</th><th>Classe</th><th>Code Unique</th></tr></thead><tbody>${studentRows}</tbody></table></div></div>`, req));
-  } catch (e) { res.status(500).send("Erreur élèves."); }
+    const classesRes = await pool.query("SELECT id, nom FROM classes ORDER BY nom ASC");
+    const selectedClasseId = req.query.classe_id ? req.query.classe_id : "all";
+
+    let queryText = "SELECT u.id, u.nom, u.prenom, u.code_eleve, c.nom AS nom_classe FROM utilisateurs u LEFT JOIN classes c ON c.id=u.classe_id WHERE u.role='ELEVE'";
+    let queryParams = [];
+
+    if (selectedClasseId !== "all") {
+      queryText += " AND u.classe_id = $1";
+      queryParams.push(Number(selectedClasseId));
+    }
+    queryText += " ORDER BY c.nom ASC, u.nom ASC";
+
+    const students = await pool.query(queryText, queryParams);
+
+    const selectorOptions = `<option value="all" ${selectedClasseId === "all" ? "selected" : ""}>📋 Tous les élèves (${students.rows.length} au total)</option>` +
+      classesRes.rows.map(c => `<option value="${c.id}" ${selectedClasseId == c.id ? "selected" : ""}>📚 ${h(c.nom)}</option>`).join("");
+
+    const studentRows = students.rows.map(s => `
+      <tr>
+        <td><b>${h(s.nom)} ${h(s.prenom)}</b></td>
+        <td><b>${h(s.nom_classe || "Non assignée")}</b></td>
+        <td><span class="excel-badge">${h(s.code_eleve)}</span></td>
+      </tr>`).join("") || "<tr><td colspan='3' style='text-align:center;padding:15px'>Aucun élève trouvé.</td></tr>";
+
+    const content = `
+      <div style="margin-bottom:15px"><a href="/admin" class="btn secondary">⬅️ Retour Panneau Direction</a></div>
+      <section class="card">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px">
+          <div>
+            <h2>🎓 Liste des Élèves</h2>
+            <p style="color:var(--lk-muted);margin:4px 0 0">Sélectionnez une classe pour filtrer l'affichage.</p>
+          </div>
+          <form method="get" action="/admin/eleves" style="min-width:240px">
+            <select name="classe_id" onchange="this.form.submit()">${selectorOptions}</select>
+          </form>
+        </div>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead>
+              <tr>
+                <th>Élève</th>
+                <th>Classe</th>
+                <th>Code Unique</th>
+              </tr>
+            </thead>
+            <tbody>${studentRows}</tbody>
+          </table>
+        </div>
+      </section>`;
+
+    res.send(layout("Gestion des Élèves", content, req));
+  } catch (e) {
+    res.status(500).send("Erreur lors du chargement des élèves.");
+  }
 });
 
 // CONNEXION & DÉCONNEXION
