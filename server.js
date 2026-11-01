@@ -142,19 +142,16 @@ const planScolaire2026 = {
   ]
 };
 
-// LISTE OFFICIELLE DES ÉLÈVES DE 2ÈME ANNÉE A (FICHE DE PRÉSENCE)
-const eleves2eA = [
-  { nom: "ALMONOR", prenom: "Jovenel", code: "S&H-2001" },
-  { nom: "AUGUSTIN", prenom: "Ketsia", code: "S&H-2002" },
-  { nom: "BAPTISTE", prenom: "WPC", code: "S&H-2003" },
-  { nom: "CHARLES", prenom: "David", code: "S&H-2004" },
-  { nom: "DORVIL", prenom: "Rachelle", code: "S&H-2005" },
-  { nom: "JOSEPH", prenom: "Stevens", code: "S&H-2006" },
-  { nom: "LOUIS", prenom: "Stphania", code: "S&H-2007" },
-  { nom: "PIERRE", prenom: "Mackendy", code: "S&H-2008" }
+// LISTE OFFICIELLE DES ÉLÈVES DE 2ÈME ANNÉE B (FICHE DE PRÉSENCE)
+const eleves2eB = [
+  { nom: "JEAN", prenom: "Marc", code: "S&H-2B01" },
+  { nom: "PIERRE", prenom: "Sandrine", code: "S&H-2B02" },
+  { nom: "JOSEPH", prenom: "Junior", code: "S&H-2B03" },
+  { nom: "LOUIS", prenom: "Vanessa", code: "S&H-2B04" },
+  { nom: "CHARLES", prenom: "Kenley", code: "S&H-2B05" }
 ];
 
-// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DE LA CLASSE 2E A
+// MIGRATIONS AUTOMATIQUES BDD & INITIALISATION DE LA CLASSE 2E B
 async function initTables() {
   try {
     await pool.query(`
@@ -242,27 +239,27 @@ async function initTables() {
       );
     `);
 
-    // S'assurer que la classe 2ème Année A existe
+    // S'assurer que la classe 2ème Année B existe
     await pool.query(`
       INSERT INTO classes (nom, niveau) 
-      VALUES ('2ème Année A', 'Fondamental')
+      VALUES ('2ème Année B', 'Fondamental')
       ON CONFLICT (nom) DO NOTHING
     `);
 
-    // Insérer automatiquement les élèves de 2ème Année A
-    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année A' LIMIT 1");
+    // Insérer automatiquement les élèves de 2ème Année B
+    const resClass = await pool.query("SELECT id FROM classes WHERE nom = '2ème Année B' LIMIT 1");
     if (resClass.rows.length > 0) {
-      const classe2eAId = resClass.rows[0].id;
+      const classe2eBId = resClass.rows[0].id;
       const defaultHash = await bcrypt.hash("ecole2026", 12);
 
-      for (const e of eleves2eA) {
+      for (const e of eleves2eB) {
         await pool.query(`
           INSERT INTO utilisateurs (nom, prenom, code_eleve, mot_de_passe, role, classe_id)
           VALUES ($1, $2, $3, $4, 'ELEVE', $5)
           ON CONFLICT DO NOTHING
-        `, [e.nom, e.prenom, e.code, defaultHash, classe2eAId]);
+        `, [e.nom, e.prenom, e.code, defaultHash, classe2eBId]);
       }
-      console.log("✅ Élèves de la classe 2ème Année A initialisés avec succès.");
+      console.log("✅ Élèves de la classe 2ème Année B initialisés avec succès.");
     }
   } catch(err) {
     console.log("Info DB init:", err.message);
